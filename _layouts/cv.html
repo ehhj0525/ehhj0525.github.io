@@ -1,0 +1,76 @@
+<!doctype html>
+<html class="no-js" lang="en">
+
+<head>
+    {% include _head.html %}
+    <style>
+        .bottom-three {
+            margin-bottom: 1.5cm;
+        }
+
+        .bottom-small {
+            margin-bottom: 1cm;
+        }
+    </style>
+</head>
+
+<body class="page">
+
+    {% include _browser-upgrade.html %}
+
+    {% include _navigation.html %}
+
+    {% if page.image.feature %}
+    <div class="image-wrap">
+        <img src={% if page.image.feature contains 'http://' %} "{{ page.image.feature }}" {% elsif page.image.feature
+            contains 'https://' %} "{{ page.image.feature }}" {% else
+            %} "{{ site.url }}/images/{{ page.image.feature }}" {% endif %} alt="{{ page.title }} feature image">
+        {% if page.image.credit %}
+        <span class="image-credit">Photo Credit: <a href="{{ page.image.creditlink }}">{{ page.image.credit
+                }}</a></span>
+        {% endif %}
+    </div><!-- /.image-wrap -->
+    {% endif %}
+    <div id="main" role="main">
+        <div class="article-author-side">
+            {% include _author-bio.html %}
+        </div>
+        <article>
+            <h1>{{ page.title }}</h1>
+            <div class="article-wrap">
+
+                <h2>Profile Overview</h2>
+                <p><strong>이름:</strong> 김은혜</p>
+                <p><strong>경력:</strong> 중등학교 음악교사로 7년간 재직</p>
+                <p><strong>학력:</strong> 한양대학교 작곡과 졸업 (4년 누적 석차 1위, 3년간 과대표)</p>
+                <br>
+
+                <h2>활동 이력</h2>
+                <ul>
+                    <li>프리랜싱 편곡 4곡</li>
+                    <li>합창단 지도 (1년)</li>
+                    <li>오케스트라 지휘 (2년)</li>
+                    <li>화성학, 청음, 작곡, 시창-청음 레슨 진행</li>
+                    <li>피아노, 바이올린, 플룻 개인 레슨</li>
+                </ul>
+                <br> <br>
+
+            </div><!-- /.article-wrap -->
+
+            {% if site.disqus_shortname and page.comments %}
+            <section id="disqus_thread"></section><!-- /#disqus_thread -->
+            {% endif %}
+        </article>
+    </div><!-- /#main -->
+
+    <div class="footer-wrap">
+        <footer>
+            {% include _footer.html %}
+        </footer>
+    </div><!-- /.footer-wrap -->
+
+    {% include _scripts.html %}
+
+</body>
+
+</html>
