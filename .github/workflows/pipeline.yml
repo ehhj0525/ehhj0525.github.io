@@ -1,0 +1,57 @@
+name: Build gallery
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "photos/**"
+      - "web/**"
+      - "overrides.json"
+      - "src/**"
+      - ".github/workflows/pipeline.yml"
+  workflow_dispatch:
+
+# Uploads often arrive in bursts; let each run finish before the next starts so
+# they do not race each other pushing to main.
+concurrency:
+  group: gallery-pipeline
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install the pipeline
+        run: pip install . pytest
+
+      - name: Test the pipeline
+        # A broken pipeline must not be allowed to rewrite the manifest.
+        run: pytest -q
+
+      - name: Process new photos
+        run: grace-pipeline .
+
+      - name: Commit the results
+        run: |
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "Nothing changed."
+            exit 0
+          fi
+          git config user.name "grace-pipeline"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          # This push uses GITHUB_TOKEN, which by design cannot trigger another
+          # workflow run — so the pipeline cannot loop. A "[skip ci]" marker is
+          # deliberately not used here: it would risk skipping the Pages build too.
+          git commit -m "pipeline: update gallery"
+          git push || (git pull --rebase && git push)

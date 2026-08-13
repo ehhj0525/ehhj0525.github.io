@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Grace</title>
+    <meta name="description" content="A growing collection of photos, by month and by place." />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌿</text></svg>" />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"
+      crossorigin=""
+    />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"
+      crossorigin=""
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <h1 id="site-title">Grace</h1>
+      <nav class="views" role="tablist" aria-label="View">
+        <button id="tab-timeline" role="tab" aria-selected="true" aria-controls="timeline">Timeline</button>
+        <button id="tab-map" role="tab" aria-selected="false" aria-controls="map">Map</button>
+      </nav>
+    </header>
+
+    <main>
+      <section id="timeline" role="tabpanel" aria-labelledby="tab-timeline">
+        <p class="status" id="status">Loading photos…</p>
+      </section>
+      <section id="map-panel" role="tabpanel" aria-labelledby="tab-map" hidden>
+        <div id="map"></div>
+        <p id="map-note" class="map-note" hidden></p>
+      </section>
+    </main>
+
+    <div id="lightbox" class="lightbox" hidden role="dialog" aria-modal="true" aria-label="Photo">
+      <button class="lightbox-close" aria-label="Close">&times;</button>
+      <button class="lightbox-nav prev" aria-label="Previous photo">&#8249;</button>
+      <figure>
+        <img id="lightbox-image" alt="" />
+        <figcaption id="lightbox-caption"></figcaption>
+      </figure>
+      <button class="lightbox-nav next" aria-label="Next photo">&#8250;</button>
+    </div>
+
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+      defer
+    ></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" crossorigin="" defer></script>
+    <script src="app.js" defer></script>
+  </body>
+</html>

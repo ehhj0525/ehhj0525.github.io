@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Add photos</title>
+    <meta name="robots" content="noindex" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌿</text></svg>" />
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="upload.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <h1>Add photos</h1>
+      <nav class="views"><a class="link-back" href="./">← Gallery</a></nav>
+    </header>
+
+    <main class="upload">
+      <section id="setup" class="card" hidden>
+        <h2>One-time setup</h2>
+        <p>
+          This device needs a GitHub token to add photos. Create a
+          <strong>fine-grained personal access token</strong> with
+          <em>Contents: Read and write</em> on the
+          <code id="repo-name">gallery</code> repository, then paste it here. It is stored only in this
+          browser.
+        </p>
+        <p>
+          <a id="token-link" href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">
+            Create a token on GitHub →
+          </a>
+        </p>
+        <form id="token-form">
+          <input
+            id="token-input"
+            type="password"
+            placeholder="github_pat_…"
+            autocomplete="off"
+            spellcheck="false"
+            required
+          />
+          <button type="submit">Save token</button>
+        </form>
+        <p id="setup-error" class="error" hidden></p>
+      </section>
+
+      <section id="picker" class="card" hidden>
+        <label class="drop" id="drop">
+          <input id="file-input" type="file" accept="image/*" multiple hidden />
+          <span class="drop-icon">＋</span>
+          <span class="drop-text">Choose photos</span>
+          <span class="drop-hint">or drag them here</span>
+        </label>
+        <ul id="queue" class="queue"></ul>
+        <p id="done-note" class="note" hidden>
+          Uploaded. The site rebuilds automatically in a minute or two —
+          <a id="actions-link" href="#" target="_blank" rel="noopener">watch progress</a>.
+        </p>
+        <button id="forget" class="forget" type="button">Forget token on this device</button>
+      </section>
+    </main>
+
+    <script src="upload.js" defer></script>
+  </body>
+</html>
