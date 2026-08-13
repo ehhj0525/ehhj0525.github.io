@@ -81,8 +81,35 @@ async function github(path, options = {}) {
   return response.json();
 }
 
+/**
+ * Check the token before accepting it, and say something useful when it fails.
+ *
+ * GitHub answers "Not Found" — not "Forbidden" — when a fine-grained token is
+ * valid but not scoped to this repository, so the raw message sends people
+ * hunting for the wrong problem.
+ */
 async function checkToken() {
-  await github(`/repos/${repo.owner}/${repo.name}`);
+  let user;
+  try {
+    user = await github("/user");
+  } catch (error) {
+    if (error.status === 401) throw new Error("this token is invalid, or it has expired");
+    throw error;
+  }
+
+  try {
+    await github(`/repos/${repo.owner}/${repo.name}`);
+  } catch (error) {
+    if (error.status !== 404) throw error;
+    throw new Error(
+      user.login.toLowerCase() === repo.owner.toLowerCase()
+        ? `this token is owned by ${user.login} but cannot see ${repo.owner}/${repo.name}. ` +
+          `Edit the token and make sure "Repository access" includes ${repo.name}.`
+        : `this token belongs to ${user.login}, but this site lives in ${repo.owner}'s account. ` +
+          `Create the token while signed in as ${repo.owner}, with ${repo.owner}/${repo.name} selected.`
+    );
+  }
+  return user;
 }
 
 async function toBase64(file) {
@@ -117,6 +144,9 @@ async function commitPhoto(file, content) {
         }),
       });
     } catch (error) {
+      if (error.status === 403) {
+        throw new Error('token cannot write here — it needs "Contents: Read and write"');
+      }
       const nameTaken = error.status === 422 || error.status === 409;
       if (!nameTaken || attempt === 4) throw error;
     }
