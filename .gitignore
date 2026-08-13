@@ -1,6 +1,10 @@
+.env
+.env.*
+.benchmarks/
 __pycache__/
 *.py[cod]
 .pytest_cache/
 .venv/
 uv.lock
 .DS_Store
+.env

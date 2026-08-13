@@ -21,7 +21,7 @@ A public static website showing photos of the owner's son, browsable as a **Time
 
 ## Defaults adopted when grilling was cut short (flip any of these by editing this spec)
 
-- **Repo name**: `grace` → `https://ehhj0525.github.io/grace/`. Must be a **standalone public repo** (this folder currently sits inside the `~/personal` mono-repo and must be re-initialized).
+- **Repo name**: `ehhj0525.github.io` → served at `https://ehhj0525.github.io/`. Decided during deployment: the owner chose to replace the previous Jekyll site ("Grace Kim's Page"), which is preserved on that repository's `master` branch.
 - **Timeline sort**: newest-first.
 - **Web version**: JPEG, max 2048 px long edge, ~quality 80. **Thumbnail**: 400 px. Since Originals are deleted, 2048 px is the largest surviving copy — acceptable because the camera roll is the archive.
 - **Upload auth**: fine-grained PAT scoped to this one repo, Contents read/write only; pasted once into the Upload page, stored in `localStorage`. PATs expire (≤1 year) and must be re-issued; each family member's device that uploads needs the token.

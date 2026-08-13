@@ -15,15 +15,20 @@ commits the results, and GitHub Pages serves the result for free.
 
 ## One-time setup
 
-1. **Create the repository** on GitHub as `grace`, public, then push this folder:
+1. **The repository** is `ehhj0525/ehhj0525.github.io`, and the site is served from
+   its `main` branch:
 
    ```bash
-   git remote add origin https://github.com/ehhj0525/grace.git
+   git remote add origin https://github.com/ehhj0525/ehhj0525.github.io.git
    git push -u origin main
    ```
 
-2. **Turn on Pages**: Settings → Pages → Source: *Deploy from a branch* → `main` / `/ (root)`.
-   The site appears at <https://ehhj0525.github.io/grace/>.
+   The previous Jekyll site ("Grace Kim's Page") is still on the `master` branch
+   of this repository — nothing was deleted, and it can be restored by pointing
+   Pages back at `master`.
+
+2. **Pages**: Settings → Pages → Source: *Deploy from a branch* → `main` / `/ (root)`.
+   The site appears at <https://ehhj0525.github.io/>.
 
 3. **Allow the pipeline to commit**: Settings → Actions → General → Workflow
    permissions → *Read and write permissions*.
@@ -35,7 +40,7 @@ commits the results, and GitHub Pages serves the result for free.
    ```
 
 5. **Create an upload token** (only for the device you upload from): open
-   <https://ehhj0525.github.io/grace/upload.html> and follow the one-time setup.
+   <https://ehhj0525.github.io/upload.html> and follow the one-time setup.
    It asks for a fine-grained personal access token with *Contents: Read and write*
    on this repository. The token is stored in that browser only — it is never part
    of the published site.
