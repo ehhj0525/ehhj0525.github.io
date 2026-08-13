@@ -1,4 +1,22 @@
 {
   "generated": "by the Grace pipeline — edit overrides.json, not this file",
-  "photos": []
+  "photos": [
+    {
+      "hash": "2b7ff5186d9620e9",
+      "name": "_DSC8535_Kopie.jpg",
+      "web": "web/2b7ff5186d9620e9.jpg",
+      "thumb": "thumbs/2b7ff5186d9620e9.jpg",
+      "takenAt": "2026-08-06T09:36:58",
+      "dateFallback": false,
+      "lat": null,
+      "lon": null,
+      "place": null,
+      "uploadedAt": "2026-08-13T22:24:02.606061",
+      "exif": {
+        "takenAt": "2026-08-06T09:36:58",
+        "lat": null,
+        "lon": null
+      }
+    }
+  ]
 }
