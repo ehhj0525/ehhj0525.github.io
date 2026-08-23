@@ -36,12 +36,12 @@ export function formatDate(iso) {
 }
 
 /**
- * How old he was when the photo was taken — "3 months", "1 year 2 months",
- * "1살 2개월". Returns null for photos from before he was born, and when no
- * birth date is set.
+ * How old the child was when the photo was taken — "3 months", "1 year 2
+ * months", "1살 2개월". Returns null for photos from before they were born,
+ * and when no birth date is set.
  *
  * Months are counted whole: the month only turns over on the day of the month
- * he was born, which is how a person counts a baby's age out loud.
+ * they were born, which is how a person counts a baby's age out loud.
  */
 export function ageLabel(birthDate, when) {
   if (!birthDate) return null;
