@@ -123,6 +123,18 @@ describe("the token", () => {
     assert.equal(github.hasToken(), true);
   });
 
+  it("can be read back, so one device can hand it to another", () => {
+    memoryStorage({ "grace.githubToken": "github_pat_test" });
+    const github = createClient(REPO);
+
+    assert.equal(github.token(), "github_pat_test");
+  });
+
+  it("reads back as nothing when there is none", () => {
+    memoryStorage();
+    assert.equal(createClient(REPO).token(), null);
+  });
+
   it("can be forgotten", () => {
     const stored = memoryStorage({ "grace.githubToken": "github_pat_test" });
     const github = createClient(REPO);

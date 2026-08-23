@@ -57,6 +57,8 @@ button {
 }
 
 #token-form button,
+#show-code,
+#hide-code,
 .forget {
   padding: 11px 18px;
   border: 0;
@@ -67,6 +69,14 @@ button {
   cursor: pointer;
 }
 
+#show-code {
+  display: block;
+  margin-top: 16px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--ink);
+}
+
 .forget {
   margin-top: 14px;
   background: transparent;
@@ -74,6 +84,26 @@ button {
   padding: 8px 0;
   font-size: 0.8rem;
   text-decoration: underline;
+}
+
+.warning {
+  padding: 12px;
+  border-radius: 8px;
+  background: color-mix(in srgb, #c0392b 10%, transparent);
+}
+
+/* Square, and no wider than a phone can show at once — a code that has to be
+   scrolled to is a code a camera cannot see whole. */
+.setup-code {
+  width: min(100%, 320px);
+  margin: 0 auto 12px;
+}
+
+.setup-code svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
 }
 
 .drop {

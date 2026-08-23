@@ -7,6 +7,8 @@
  */
 
 import { createClient, detectRepo, encodeBase64 } from "./github.js";
+import { qrSvg } from "./qr.js";
+import { setupUrl, tokenFromFragment } from "./setup-link.js";
 import { expiryNotice } from "./token-expiry.js";
 import { batchProgress, batchSummary } from "./upload-progress.js";
 
@@ -35,6 +37,10 @@ const el = {
   queue: document.getElementById("queue"),
   doneNote: document.getElementById("done-note"),
   actionsLink: document.getElementById("actions-link"),
+  showCode: document.getElementById("show-code"),
+  handOff: document.getElementById("hand-off"),
+  setupCode: document.getElementById("setup-code"),
+  hideCode: document.getElementById("hide-code"),
   forget: document.getElementById("forget"),
 };
 
@@ -136,6 +142,7 @@ async function upload(files) {
 function showPicker() {
   el.setup.hidden = true;
   el.picker.hidden = false;
+  el.handOff.hidden = true;
   el.actionsLink.href = `https://github.com/${github.repo.owner}/${github.repo.name}/actions`;
 
   // The token just verified, so it still works — this only says for how long.
@@ -147,8 +154,41 @@ function showPicker() {
 function showSetup(message) {
   el.setup.hidden = false;
   el.picker.hidden = true;
+  el.handOff.hidden = true;
   el.setupError.hidden = !message;
   el.setupError.textContent = message ?? "";
+}
+
+/**
+ * Put the token now on this device to work: show the picker if GitHub accepts
+ * it, or hand back why it did not, for the caller to word. Every way a token
+ * arrives — already saved, typed, scanned — comes through here, so however one
+ * turned up, a token that is invalid, expired or scoped to the wrong repository
+ * is said to be so rather than left to look as though the page is set up.
+ */
+async function useStoredToken() {
+  try {
+    await github.verifyToken();
+    showPicker();
+    return null;
+  } catch (error) {
+    github.forgetToken();
+    return error.message;
+  }
+}
+
+/**
+ * The token this device arrived carrying, lifted out of the address bar as it
+ * is read: a token left in a URL is a token in the history, in the next
+ * screenshot, and in whatever the browser syncs between devices. replaceState
+ * leaves nothing to go back to.
+ */
+function takeScannedToken() {
+  const token = tokenFromFragment(location.hash);
+  if (!token) return null;
+
+  history.replaceState(null, "", location.pathname + location.search);
+  return token;
 }
 
 async function start() {
@@ -156,14 +196,14 @@ async function start() {
   el.repoName.textContent = `${github.repo.owner}/${github.repo.name}`;
   el.tokenLink.href = "https://github.com/settings/personal-access-tokens/new";
 
-  if (github.hasToken()) {
-    try {
-      await github.verifyToken();
-      showPicker();
-    } catch (error) {
-      github.forgetToken();
-      showSetup(`That saved token no longer works (${error.message}). Please add a new one.`);
-    }
+  const scanned = takeScannedToken();
+  if (scanned) {
+    github.saveToken(scanned);
+    const refused = await useStoredToken();
+    if (refused) showSetup(`The code you scanned did not work: ${refused}`);
+  } else if (github.hasToken()) {
+    const refused = await useStoredToken();
+    if (refused) showSetup(`That saved token no longer works (${refused}). Please add a new one.`);
   } else {
     showSetup();
   }
@@ -171,14 +211,26 @@ async function start() {
   el.tokenForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     github.saveToken(el.tokenInput.value);
-    try {
-      await github.verifyToken();
+    const refused = await useStoredToken();
+    if (refused) {
+      showSetup(`That token did not work: ${refused}`);
+    } else {
       el.tokenInput.value = "";
-      showPicker();
-    } catch (error) {
-      github.forgetToken();
-      showSetup(`That token did not work: ${error.message}`);
     }
+  });
+
+  el.showCode.addEventListener("click", () => {
+    // Drawn on the way in and thrown away on the way out, so dismissing the
+    // code really does take the token off the screen. The markup is the
+    // encoder's own — geometry and nothing from anywhere else.
+    el.setupCode.innerHTML = qrSvg(setupUrl(location.href, github.token()), "Setup code");
+    el.handOff.hidden = false;
+    el.handOff.scrollIntoView({ block: "nearest" });
+  });
+
+  el.hideCode.addEventListener("click", () => {
+    el.handOff.hidden = true;
+    el.setupCode.replaceChildren();
   });
 
   el.forget.addEventListener("click", () => {

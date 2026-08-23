@@ -233,6 +233,8 @@ export function createClient(repo) {
   return {
     repo,
     hasToken: () => Boolean(localStorage.getItem(TOKEN_KEY)),
+    /** The stored token itself, for handing this device's access to another one. */
+    token: () => localStorage.getItem(TOKEN_KEY),
     saveToken(value) {
       expiresAt = null;
       localStorage.setItem(TOKEN_KEY, value.trim());

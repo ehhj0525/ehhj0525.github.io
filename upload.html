@@ -18,6 +18,10 @@
     <main class="upload">
       <section id="setup" class="card" hidden>
         <h2>One-time setup</h2>
+        <p class="note">
+          If a device that can already add photos is to hand, it can show a setup code for this
+          one — no token to type. Otherwise, carry on below.
+        </p>
         <p>
           This device needs a GitHub token to add photos. Create a
           <strong>fine-grained personal access token</strong> with
@@ -71,7 +75,21 @@
           Uploaded. The site rebuilds automatically in a minute or two —
           <a id="actions-link" href="#" target="_blank" rel="noopener">watch progress</a>.
         </p>
+        <button id="show-code" type="button">Set up another device</button>
         <button id="forget" class="forget" type="button">Forget token on this device</button>
+      </section>
+
+      <!-- Never on screen unless asked for: while it is showing, a photograph
+           of it is as good as the token itself. -->
+      <section id="hand-off" class="card" hidden>
+        <h2>Set up another device</h2>
+        <p class="warning">
+          Anyone who photographs this code can add photos to the gallery for as long as this
+          token lasts. Show it to the other phone and close it again.
+        </p>
+        <div id="setup-code" class="setup-code"></div>
+        <p>Point the other phone's camera at it — there is nothing to type.</p>
+        <button id="hide-code" type="button">Done</button>
       </section>
     </main>
 
