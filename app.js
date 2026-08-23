@@ -3,11 +3,15 @@
  * a month-by-month timeline, and a map of where the photos were taken.
  */
 
+import { indexOfPhoto, photoIdFromUrl, urlForPhoto, urlWithoutPhoto } from "./photo-url.js";
+
 const state = {
   photos: [], // newest first — the order the lightbox steps through
   config: { title: "Grace", birthDate: null },
   index: 0,
   map: null,
+  scrollY: 0, // where the timeline was when the open photo was opened from it
+  dismissing: false, // a close is in flight, waiting on popstate
 };
 
 const el = {
@@ -50,6 +54,7 @@ async function start() {
   renderTimeline();
   wireTabs();
   wireLightbox();
+  openFromUrl();
 }
 
 /* --------------------------------------------------------------- timeline */
@@ -130,7 +135,7 @@ function tile(photo) {
     button.append(place);
   }
 
-  button.addEventListener("click", () => openLightbox(state.photos.indexOf(photo)));
+  button.addEventListener("click", () => openPhoto(state.photos.indexOf(photo)));
   return button;
 }
 
@@ -215,7 +220,7 @@ function popup(photo) {
   const image = document.createElement("img");
   image.src = photo.thumb;
   image.alt = "";
-  image.addEventListener("click", () => openLightbox(state.photos.indexOf(photo)));
+  image.addEventListener("click", () => openPhoto(state.photos.indexOf(photo)));
 
   const caption = document.createElement("div");
   caption.className = "popup-caption";
@@ -227,28 +232,84 @@ function popup(photo) {
 
 /* --------------------------------------------------------------- lightbox */
 
-function openLightbox(index) {
-  if (index < 0) return;
-  state.index = index;
-  showPhoto();
-  el.lightbox.hidden = false;
-  document.body.style.overflow = "hidden";
+/*
+ * An open photo is a place of its own: it names itself in the address bar and
+ * owns exactly one history entry, so the phone's back gesture closes it instead
+ * of leaving the site, and the link can be passed around. Stepping between
+ * photos rewrites that one entry rather than stacking up more — otherwise
+ * escaping the lightbox would cost one back press per photo looked at.
+ *
+ * The URL is the truth about which photo is open. Everything that opens or
+ * closes one goes through history, and the popstate handler below is what
+ * actually shows and hides the lightbox.
+ */
+
+function openPhoto(index) {
+  const photo = state.photos[index];
+  if (!photo) return;
+
+  state.scrollY = window.scrollY;
+  // Onto the entry we are about to leave, so coming back lands where we left.
+  history.replaceState({ ...history.state, scrollY: state.scrollY }, "");
+  history.pushState({ photo: photo.hash }, "", urlForPhoto(photo.hash, location.href));
+  showPhoto(index);
 }
 
-function closeLightbox() {
+function stepPhoto(delta) {
+  const count = state.photos.length;
+  const index = (state.index + delta + count) % count;
+  const { hash } = state.photos[index];
+
+  history.replaceState({ photo: hash }, "", urlForPhoto(hash, location.href));
+  showPhoto(index);
+}
+
+/** The ✕, Escape and a tap on the backdrop all go back, so history stays clean. */
+function dismissPhoto() {
+  // popstate arrives a beat later, so a double-tap on ✕ would otherwise go back
+  // twice and leave the site.
+  if (el.lightbox.hidden || state.dismissing) return;
+  state.dismissing = true;
+  history.back(); // which lands in onPopState, and that does the closing
+}
+
+/**
+ * A link straight to a photo. The timeline is given a history entry underneath
+ * it first, so back closes the photo rather than leaving the site — even for a
+ * visitor who arrived on the link from a chat app.
+ */
+function openFromUrl() {
+  const id = photoIdFromUrl(location.href);
+  if (!id) return;
+
+  const index = indexOfPhoto(state.photos, id);
+  history.replaceState({ scrollY: 0 }, "", urlWithoutPhoto(location.href));
+  // A link to a photo that is no longer here just shows the timeline, quietly.
+  if (index < 0) return;
+
+  history.pushState({ photo: id }, "", urlForPhoto(id, location.href));
+  showPhoto(index);
+}
+
+function onPopState() {
+  state.dismissing = false;
+  const index = indexOfPhoto(state.photos, photoIdFromUrl(location.href));
+  if (index < 0) hidePhoto();
+  else showPhoto(index);
+}
+
+function hidePhoto() {
+  if (el.lightbox.hidden) return;
   el.lightbox.hidden = true;
   el.lightboxImage.removeAttribute("src");
   document.body.style.overflow = "";
+  // Locking the body's scroll can lose the timeline's place; put it back.
+  window.scrollTo(0, history.state?.scrollY ?? state.scrollY);
 }
 
-function step(delta) {
-  const count = state.photos.length;
-  state.index = (state.index + delta + count) % count;
-  showPhoto();
-}
-
-function showPhoto() {
-  const photo = state.photos[state.index];
+function showPhoto(index) {
+  state.index = index;
+  const photo = state.photos[index];
   el.lightboxImage.src = photo.web;
   el.lightboxImage.alt = photo.place ? `Photo taken in ${photo.place}` : "Photo";
 
@@ -265,6 +326,11 @@ function showPhoto() {
     // Warm the neighbours so stepping through feels instant.
     new Image().src = state.photos[(state.index + offset + state.photos.length) % state.photos.length].web;
   }
+
+  if (el.lightbox.hidden) {
+    el.lightbox.hidden = false;
+    document.body.style.overflow = "hidden";
+  }
 }
 
 function formatDate(iso) {
@@ -275,18 +341,20 @@ function formatDate(iso) {
 }
 
 function wireLightbox() {
-  el.lightbox.querySelector(".lightbox-close").addEventListener("click", closeLightbox);
-  el.lightbox.querySelector(".prev").addEventListener("click", () => step(-1));
-  el.lightbox.querySelector(".next").addEventListener("click", () => step(1));
+  window.addEventListener("popstate", onPopState);
+
+  el.lightbox.querySelector(".lightbox-close").addEventListener("click", dismissPhoto);
+  el.lightbox.querySelector(".prev").addEventListener("click", () => stepPhoto(-1));
+  el.lightbox.querySelector(".next").addEventListener("click", () => stepPhoto(1));
   el.lightbox.addEventListener("click", (event) => {
-    if (event.target === el.lightbox) closeLightbox();
+    if (event.target === el.lightbox) dismissPhoto();
   });
 
   document.addEventListener("keydown", (event) => {
     if (el.lightbox.hidden) return;
-    if (event.key === "Escape") closeLightbox();
-    if (event.key === "ArrowLeft") step(-1);
-    if (event.key === "ArrowRight") step(1);
+    if (event.key === "Escape") dismissPhoto();
+    if (event.key === "ArrowLeft") stepPhoto(-1);
+    if (event.key === "ArrowRight") stepPhoto(1);
   });
 
   let swipeStart = null;
@@ -304,7 +372,7 @@ function wireLightbox() {
       const touch = event.changedTouches[0];
       const dx = touch.clientX - swipeStart.clientX;
       const dy = touch.clientY - swipeStart.clientY;
-      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) step(dx < 0 ? 1 : -1);
+      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) stepPhoto(dx < 0 ? 1 : -1);
       swipeStart = null;
     },
     { passive: true }

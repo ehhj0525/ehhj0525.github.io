@@ -105,6 +105,7 @@ python3 -m http.server               # then open http://localhost:8000
 | `geocache.json` | Place names already looked up, so each location costs one request ever. |
 | `src/grace_pipeline/` | The pipeline: EXIF → manifest, HEIC → web JPEG. |
 | `index.html`, `app.js` | The gallery. |
+| `photo-url.js` | The address of an open photo: `?photo=<hash>`, so links can be shared. |
 | `upload.html`, `upload.js` | The upload page. |
 | `github.js` | Talking to this repository: which repo it is, the token, reading and writing files. |
 | `package.json` | Only so Node reads the `.js` files as ES modules when running the tests. No dependencies. |

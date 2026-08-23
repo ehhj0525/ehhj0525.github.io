@@ -60,6 +60,7 @@
       defer
     ></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" crossorigin="" defer></script>
-    <script src="app.js" defer></script>
+    <!-- A module so it can import photo-url.js; module scripts defer by default. -->
+    <script src="app.js" type="module"></script>
   </body>
 </html>
