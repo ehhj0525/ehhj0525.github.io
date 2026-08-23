@@ -41,10 +41,12 @@ function recordFetch(handler) {
       body: options.body === undefined ? undefined : JSON.parse(options.body),
     };
     calls.push(call);
-    const { status = 200, body = {}, unparseable = false } = (await handler(call, calls.length)) ?? {};
+    const { status = 200, body = {}, headers = {}, unparseable = false } =
+      (await handler(call, calls.length)) ?? {};
     return {
       ok: status >= 200 && status < 300,
       status,
+      headers: new Headers(headers),
       json: async () => {
         if (unparseable) throw new SyntaxError("Unexpected token < in JSON");
         return body;
@@ -192,6 +194,58 @@ describe("verifyToken", () => {
       createClient(REPO).verifyToken(),
       /belongs to someone-else, but this site lives in ehhj0525's account/
     );
+  });
+});
+
+describe("the token's expiry", () => {
+  const EXPIRES = "github-authentication-token-expiration";
+
+  /** Verify a token against a GitHub that reports (or does not report) an expiry. */
+  async function verifyWith(headers) {
+    const github = createClient(REPO);
+    recordFetch((call) => ({ body: call.url.endsWith("/user") ? { login: "ehhj0525" } : {}, headers }));
+    await github.verifyToken();
+    return github;
+  }
+
+  it("is learned from the response GitHub sends while verifying", async () => {
+    const github = await verifyWith({ [EXPIRES]: "2026-09-05 00:00:00 +0100" });
+
+    assert.deepEqual(github.tokenExpiry(), new Date("2026-09-04T23:00:00Z"));
+  });
+
+  it("reads a UTC expiry as well as an offset one", async () => {
+    const github = await verifyWith({ [EXPIRES]: "2026-09-05 00:00:00 UTC" });
+
+    assert.deepEqual(github.tokenExpiry(), new Date("2026-09-05T00:00:00Z"));
+  });
+
+  it("is simply unknown when GitHub does not report one", async () => {
+    const github = await verifyWith({});
+
+    assert.equal(github.tokenExpiry(), null);
+  });
+
+  it("is unknown rather than wrong when the date cannot be read", async () => {
+    const github = await verifyWith({ [EXPIRES]: "whenever" });
+
+    assert.equal(github.tokenExpiry(), null);
+  });
+
+  it("is forgotten along with the token", async () => {
+    const github = await verifyWith({ [EXPIRES]: "2026-09-05 00:00:00 UTC" });
+
+    github.forgetToken();
+
+    assert.equal(github.tokenExpiry(), null);
+  });
+
+  it("does not outlive the token it belonged to", async () => {
+    const github = await verifyWith({ [EXPIRES]: "2026-09-05 00:00:00 UTC" });
+
+    github.saveToken("github_pat_replacement");
+
+    assert.equal(github.tokenExpiry(), null);
   });
 });
 

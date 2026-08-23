@@ -7,6 +7,7 @@
  */
 
 import { createClient, detectRepo, encodeBase64 } from "./github.js";
+import { expiryNotice } from "./token-expiry.js";
 import { batchProgress, batchSummary } from "./upload-progress.js";
 
 const MAX_BYTES = 40 * 1024 * 1024; // the Contents API gets unhappy well before this
@@ -26,6 +27,8 @@ const el = {
   tokenLink: document.getElementById("token-link"),
   setupError: document.getElementById("setup-error"),
   repoName: document.getElementById("repo-name"),
+  expiry: document.getElementById("expiry"),
+  expiryText: document.getElementById("expiry-text"),
   drop: document.getElementById("drop"),
   fileInput: document.getElementById("file-input"),
   progress: document.getElementById("progress"),
@@ -134,6 +137,11 @@ function showPicker() {
   el.setup.hidden = true;
   el.picker.hidden = false;
   el.actionsLink.href = `https://github.com/${github.repo.owner}/${github.repo.name}/actions`;
+
+  // The token just verified, so it still works — this only says for how long.
+  const notice = expiryNotice(github.tokenExpiry());
+  el.expiryText.textContent = notice ?? "";
+  el.expiry.hidden = !notice;
 }
 
 function showSetup(message) {

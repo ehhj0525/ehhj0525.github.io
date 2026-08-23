@@ -70,6 +70,28 @@ function decodeBase64(content) {
 
 const encodePath = (path) => path.split("/").map(encodeURIComponent).join("/");
 
+/* ----------------------------------------------------------------- expiry */
+
+// GitHub reports when the token being used runs out, on every response it
+// answers with.
+const EXPIRY_HEADER = "github-authentication-token-expiration";
+
+// It words the date as "2026-09-05 00:00:00 +0100", which Safari — the browser
+// this site is used from — will not parse, so it is rewritten into the ISO form
+// every browser agrees on. Anything that does not match is left unknown rather
+// than guessed at.
+const EXPIRY_FORMAT = /^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2}) (UTC|[+-]\d{2}:?\d{2})$/;
+
+function parseExpiry(header) {
+  const matched = EXPIRY_FORMAT.exec(header ?? "");
+  if (!matched) return null;
+
+  const [, date, time, zone] = matched;
+  const offset = zone === "UTC" ? "Z" : zone.replace(/^([+-]\d\d)(\d\d)$/, "$1:$2");
+  const at = new Date(`${date}T${time}${offset}`);
+  return Number.isNaN(at.getTime()) ? null : at;
+}
+
 /* ----------------------------------------------------------------- client */
 
 /**
@@ -78,6 +100,10 @@ const encodePath = (path) => path.split("/").map(encodeURIComponent).join("/");
  */
 export function createClient(repo) {
   const contents = (path) => `/repos/${repo.owner}/${repo.name}/contents/${encodePath(path)}`;
+
+  // Learnt from whatever GitHub last answered, and true of the token that is
+  // stored now — so putting a different token away puts this away with it.
+  let expiresAt = null;
 
   async function request(path, options = {}) {
     const response = await fetch(`${API_ROOT}${path}`, {
@@ -89,6 +115,7 @@ export function createClient(repo) {
         ...(options.headers ?? {}),
       },
     });
+    expiresAt = parseExpiry(response.headers.get(EXPIRY_HEADER));
     if (!response.ok) {
       const detail = await response.json().catch(() => ({}));
       const error = new Error(detail.message || `GitHub returned ${response.status}`);
@@ -206,9 +233,17 @@ export function createClient(repo) {
   return {
     repo,
     hasToken: () => Boolean(localStorage.getItem(TOKEN_KEY)),
-    saveToken: (value) => localStorage.setItem(TOKEN_KEY, value.trim()),
-    forgetToken: () => localStorage.removeItem(TOKEN_KEY),
+    saveToken(value) {
+      expiresAt = null;
+      localStorage.setItem(TOKEN_KEY, value.trim());
+    },
+    forgetToken() {
+      expiresAt = null;
+      localStorage.removeItem(TOKEN_KEY);
+    },
     request,
+    /** When the stored token runs out, or `null` while that is not known. */
+    tokenExpiry: () => expiresAt,
     verifyToken,
     readFile,
     writeFile,

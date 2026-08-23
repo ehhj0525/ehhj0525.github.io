@@ -171,6 +171,14 @@ button {
   font-size: 0.85rem;
 }
 
+.expiry {
+  margin: 0 0 16px;
+  padding: 12px;
+  border-radius: 8px;
+  background: color-mix(in srgb, #c07a24 12%, transparent);
+  font-size: 0.85rem;
+}
+
 .error {
   color: #c0392b;
   font-size: 0.85rem;
