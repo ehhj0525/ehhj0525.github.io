@@ -83,6 +83,23 @@ body {
   color: #fff;
 }
 
+/*
+ * The way in to the upload page: quiet, and in the sticky header so it is one tap
+ * away however far the timeline has been scrolled. It stays shorter than the tabs
+ * so the header keeps its height and the month headings go on sticking under it.
+ */
+.link-upload {
+  display: flex;
+  align-items: center;
+  /* By the title, not the far corner — that is where the lightbox's ✕ sits, and a
+     quick double-tap to close a photo would land its second tap here. */
+  margin-right: auto;
+  padding: 10px 8px; /* a thumb-sized target out of a small word */
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.85rem;
+}
+
 /* ---------- timeline ---------- */
 
 main {

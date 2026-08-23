@@ -47,9 +47,10 @@ commits the results, and GitHub Pages serves the result for free.
 
 ## Adding photos
 
-Open **`/upload.html`** on your phone, tap *Choose photos*, pick from the camera
-roll. HEIC from an iPhone is fine — the pipeline converts it. Within a minute or
-two the site rebuilds and the photos appear.
+Tap **Add** in the gallery's header — or open **`/upload.html`** directly — then
+tap *Choose photos* and pick from the camera roll. HEIC from an iPhone is fine —
+the pipeline converts it. Within a minute or two the site rebuilds and the photos
+appear.
 
 Dragging files into the `photos/` folder in the GitHub web UI works exactly the
 same way.
