@@ -43,6 +43,10 @@ def photos_in(site: Path) -> list[dict]:
     return json.loads((site / "photos.json").read_text())["photos"]
 
 
+def failures_in(site: Path) -> list[dict]:
+    return json.loads((site / "failed.json").read_text())["failed"]
+
+
 def no_geocoding(lat, lon):
     raise AssertionError("should not have been called")
 
@@ -146,6 +150,54 @@ class TestProcessing:
 
         assert (site / "photos" / "failed" / "broken.jpg").exists()
         assert second.failed == 0, "the inbox should be clear on the next build"
+
+
+class TestFailureReport:
+    def test_records_the_name_and_the_reason_a_file_could_not_be_read(self, site):
+        (site / "photos" / "broken.jpg").write_bytes(b"not really a jpeg")
+
+        run(site, fetch=no_geocoding, now=NOW)
+
+        record = failures_in(site)[0]
+        assert record["name"] == "broken.jpg"
+        assert record["reason"], "the report has to say why, not only that it happened"
+        assert str(site) not in record["reason"], "the build machine's paths are nobody's business"
+
+    def test_a_build_with_nothing_wrong_writes_no_report(self, site):
+        add_photo(site, "IMG_1.jpg")
+
+        run(site, fetch=no_geocoding, now=NOW)
+
+        assert not (site / "failed.json").exists()
+
+    def test_the_report_outlives_the_build_that_set_the_file_aside(self, site):
+        """The file is out of the inbox by then, so nothing re-discovers the failure."""
+        (site / "photos" / "broken.jpg").write_bytes(b"not really a jpeg")
+        run(site, fetch=no_geocoding, now=NOW)
+
+        run(site, fetch=no_geocoding, now=NOW)
+
+        assert [record["name"] for record in failures_in(site)] == ["broken.jpg"]
+
+    def test_deleting_the_set_aside_file_clears_the_report(self, site):
+        """Removing the file from the repository is how the owner dismisses the report."""
+        (site / "photos" / "broken.jpg").write_bytes(b"not really a jpeg")
+        (site / "photos" / "also-broken.png").write_bytes(b"not really a png")
+        run(site, fetch=no_geocoding, now=NOW)
+
+        (site / "photos" / "failed" / "broken.jpg").unlink()
+        run(site, fetch=no_geocoding, now=NOW)
+
+        assert [record["name"] for record in failures_in(site)] == ["also-broken.png"]
+
+    def test_the_report_goes_away_entirely_once_the_last_file_is_deleted(self, site):
+        (site / "photos" / "broken.jpg").write_bytes(b"not really a jpeg")
+        run(site, fetch=no_geocoding, now=NOW)
+
+        (site / "photos" / "failed" / "broken.jpg").unlink()
+        run(site, fetch=no_geocoding, now=NOW)
+
+        assert not (site / "failed.json").exists()
 
 
 class TestIdempotence:

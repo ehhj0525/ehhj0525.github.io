@@ -6,6 +6,7 @@
  * lives in github.js; this file is only the page around it.
  */
 
+import { failureHeading, loadFailures } from "./failure-report.js";
 import { createClient, detectRepo, encodeBase64 } from "./github.js";
 import { qrSvg } from "./qr.js";
 import { setupUrl, tokenFromFragment } from "./setup-link.js";
@@ -31,6 +32,10 @@ const el = {
   repoName: document.getElementById("repo-name"),
   expiry: document.getElementById("expiry"),
   expiryText: document.getElementById("expiry-text"),
+  failed: document.getElementById("failed"),
+  failedHeading: document.getElementById("failed-heading"),
+  failedList: document.getElementById("failed-list"),
+  failedLink: document.getElementById("failed-link"),
   drop: document.getElementById("drop"),
   fileInput: document.getElementById("file-input"),
   progress: document.getElementById("progress"),
@@ -137,6 +142,44 @@ async function upload(files) {
   if (succeeded > 0) el.doneNote.hidden = false;
 }
 
+/* --------------------------------------------------------- failure report */
+
+function failureRow({ name, reason }) {
+  const row = document.createElement("li");
+
+  const photo = document.createElement("span");
+  photo.className = "name";
+  photo.textContent = name;
+
+  const why = document.createElement("span");
+  why.className = "reason";
+  why.textContent = reason;
+
+  row.append(photo, why);
+  return row;
+}
+
+/**
+ * Report the photos the pipeline could not read, if there are any.
+ *
+ * Shown whenever the picker is, rather than after a batch: the pipeline runs a
+ * minute or two behind the upload, so by the time a photo has failed the batch
+ * that carried it is over and this page is usually closed. Waiting for a batch
+ * to end would show the report to nobody, and hide it from someone who came
+ * here to find out where their photo went.
+ */
+async function showFailures() {
+  const records = await loadFailures();
+  el.failed.hidden = records.length === 0;
+  if (records.length === 0) return;
+
+  el.failedHeading.textContent = failureHeading(records.length);
+  el.failedList.replaceChildren(...records.map(failureRow));
+  // Deleting the file is what clears the report, so the way to it is part of it.
+  const { owner, name, branch } = github.repo;
+  el.failedLink.href = `https://github.com/${owner}/${name}/tree/${branch}/photos/failed`;
+}
+
 /* ------------------------------------------------------------------ setup */
 
 function showPicker() {
@@ -149,6 +192,8 @@ function showPicker() {
   const notice = expiryNotice(github.tokenExpiry());
   el.expiryText.textContent = notice ?? "";
   el.expiry.hidden = !notice;
+
+  showFailures(); // never rejects, and nothing here waits on it
 }
 
 function showSetup(message) {

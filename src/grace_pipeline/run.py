@@ -8,7 +8,7 @@ from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
 
-from . import geocode, images, manifest, metadata
+from . import failures, geocode, images, manifest, metadata
 from .geocode import PlaceResolver
 from .manifest import Overrides, PhotoEntry
 
@@ -30,12 +30,14 @@ class Summary:
 def run(root: Path, *, fetch=None, now: datetime | None = None) -> Summary:
     root = Path(root)
     inbox = root / "photos"
+    quarantine = inbox / "failed"
     web_dir, thumb_dir = root / "web", root / "thumbs"
     upload_date = now or datetime.now()
     summary = Summary()
 
     overrides = Overrides.load(root / "overrides.json")
     entries = {entry.hash: entry for entry in manifest.load(root / "photos.json")}
+    unreadable = {record.name: record for record in failures.load(root / "failed.json")}
 
     waiting = sorted(p for p in inbox.iterdir() if images.is_photo(p)) if inbox.exists() else []
     for path in waiting:
@@ -54,7 +56,8 @@ def run(root: Path, *, fetch=None, now: datetime | None = None) -> Summary:
         except Exception as error:  # one bad file must not cost the whole build
             print(f"  ! could not read {path.name}: {error}", file=sys.stderr)
             summary.failed += 1
-            _set_aside(path, inbox / "failed")
+            unreadable[path.name] = failures.Failure(path.name, _reason(error, path))
+            _set_aside(path, quarantine)
 
     kept = _reconcile_with_disk(list(entries.values()), web_dir, thumb_dir, summary)
     published_places = {entry.hash: entry.place for entry in kept}
@@ -68,9 +71,15 @@ def run(root: Path, *, fetch=None, now: datetime | None = None) -> Summary:
     kept = [_place(entry, overrides, resolver, published_places.get(entry.hash)) for entry in kept]
 
     manifest.save(root / "photos.json", kept)
+    failures.save(root / "failed.json", failures.reconcile(list(unreadable.values()), quarantine))
     if resolver.dirty:
         geocode.save_cache(root / "geocache.json", resolver.cache)
     return summary
+
+
+def _reason(error: Exception, path: Path) -> str:
+    """The decoder's own words, minus the build machine's absolute paths."""
+    return str(error).replace(str(path), path.name) or type(error).__name__
 
 
 def _set_aside(path: Path, quarantine: Path) -> None:

@@ -62,6 +62,17 @@
             Create a replacement →
           </a>
         </p>
+        <!-- The pipeline sets a photo it cannot read aside instead of deleting
+             it, and nothing else on the site says so. -->
+        <section id="failed" class="failed" role="status" hidden>
+          <h2 id="failed-heading"></h2>
+          <ul id="failed-list"></ul>
+          <p>
+            They are kept in
+            <a id="failed-link" href="#" target="_blank" rel="noopener">photos/failed/</a> —
+            delete one there and it will drop off this list.
+          </p>
+        </section>
         <label class="drop" id="drop">
           <input id="file-input" type="file" accept="image/*" multiple hidden />
           <span class="drop-icon">＋</span>

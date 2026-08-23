@@ -35,7 +35,8 @@ grace/
 ├── photos/           # Upload target. Originals land here; Pipeline empties it.
 ├── web/              # Web versions (2048px JPEG), named by content hash
 ├── thumbs/           # Thumbnails (400px JPEG), same names
-├── photos.json       # Manifest — the only thing the site reads
+├── photos.json       # Manifest — the only thing the Timeline and Map read
+├── failed.json       # Files the Pipeline could not read; reported on the Upload page
 ├── overrides.json    # Owner-edited date/location/place-name fixes
 ├── geocache.json     # Nominatim results, one entry per unique location
 ├── config.json       # Birth date, site title
