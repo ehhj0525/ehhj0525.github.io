@@ -5,7 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Grace</title>
     <meta name="description" content="A growing collection of photos, by month and by place." />
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌿</text></svg>" />
+
+    <!-- The home-screen app: the manifest is what a phone reads to offer the
+         site as an app of its own rather than a bookmark, and iOS reads the
+         apple-touch-icon instead of anything in the manifest. The two
+         theme-colours are the site's own background in each theme, so the
+         phone's bars match the page instead of framing it in white. -->
+    <link rel="icon" href="icon.svg" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <meta name="theme-color" content="#fbf9f6" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#171513" media="(prefers-color-scheme: dark)" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -74,12 +87,35 @@
       data-i18n-label="gallery.photo"
     >
       <button class="lightbox-close" aria-label="Close" data-i18n-label="gallery.close">&times;</button>
+      <!-- Sending one photo to the family is the commonest thing anybody does
+           with an open photo, and until now it meant copying the address bar by
+           hand. The icon carries no words, so only its label is translated. -->
+      <button id="share" class="lightbox-share" aria-label="Share" data-i18n-label="gallery.share" hidden>
+        <svg
+          viewBox="0 0 24 24"
+          width="21"
+          height="21"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M12 3v11" />
+          <path d="M8 7l4-4 4 4" />
+          <path d="M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5" />
+        </svg>
+      </button>
       <button class="lightbox-nav prev" aria-label="Previous photo" data-i18n-label="gallery.previous">&#8249;</button>
       <figure>
         <img id="lightbox-image" alt="" />
         <figcaption id="lightbox-caption"></figcaption>
       </figure>
       <button class="lightbox-nav next" aria-label="Next photo" data-i18n-label="gallery.next">&#8250;</button>
+      <!-- What the phone's own share sheet cannot say for itself: that a link
+           went to the clipboard, or that nothing did. -->
+      <p id="toast" class="toast" role="status" hidden></p>
     </div>
 
     <script

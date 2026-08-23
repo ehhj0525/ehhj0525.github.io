@@ -45,6 +45,11 @@ commits the results, and GitHub Pages serves the result for free.
    the way that language writes them. Anything else, or nothing at all, and the
    site is in English.
 
+   The `title` and `language` are also the installed app's name and language, in
+   `manifest.webmanifest` — change them here and change them there. The tests
+   fail if the two ever disagree, so this is not something you can forget
+   quietly.
+
 5. **Create an upload token** (only for the device you upload from): open
    <https://ehhj0525.github.io/upload.html> and follow the one-time setup.
    It asks for a fine-grained personal access token with *Contents: Read and write*
@@ -91,15 +96,47 @@ commits the results, and GitHub Pages serves the result for free.
    Devices already set up carry on — each holds its own copy of the token, until
    that copy is replaced or it expires.
 
+## Putting it on the home screen
+
+Open the site and choose **Add to Home Screen** — *Share → Add to Home Screen* on
+an iPhone, the browser's menu on Android. It comes up as an app of its own after
+that: the leaf as its icon, no browser bar, and the phone's own bars in the
+site's colours.
+
+It also opens with no network at all. Photos are named after the hash of their
+own contents and so can never change, which makes them exactly the sort of thing
+a phone should keep: every one that has been looked at is still there on a train
+or in a lift. Everything else — the pages, the manifest — is fetched every time
+as it always was, and the kept copy is used only when there is nothing to fetch
+from. A photo uploaded a minute ago still shows up the moment it is published.
+
+The mark is drawn in `icon.svg`, and `icons/` holds the sizes phones ask for. If
+you ever change it: `python3 .github/scripts/make-icons.py` (needs
+`brew install librsvg`).
+
 ## Adding photos
 
 Tap **Add** in the gallery's header — or open **`/upload.html`** directly — then
 tap *Choose photos* and pick from the camera roll. HEIC from an iPhone is fine —
-the pipeline converts it. Within a minute or two the site rebuilds and the photos
-appear.
+the pipeline converts it.
+
+Then the page waits with you. Uploading is a commit, not a photo on a website —
+the pipeline has to read it and Pages has to publish the result — so the page
+watches the gallery until the photos are really in it and says so:
+*사진 3장이 갤러리에 올라왔어요 — 보러 가기*. If one never appears it says that
+too, rather than leaving you to guess: most often that means the photo was
+already in the gallery, which the pipeline skips silently.
 
 Dragging files into the `photos/` folder in the GitHub web UI works exactly the
-same way.
+same way, minus the watching.
+
+## Sending a photo to somebody
+
+Open a photo and tap the share icon. Where the phone will carry a file — most
+will — it hands over the photo itself, so it lands in the chat as a photo and can
+be kept; the link goes with it, for whoever wants the rest of the gallery. On a
+browser with no share sheet the link goes to the clipboard instead, and the page
+says so.
 
 ## Fixing a photo
 
@@ -113,6 +150,20 @@ coordinates and a place name. Fill in what it should say and save — and **empt
 field** to go back to whatever the photo itself said. Naming a place is on the same
 screen, under *Name a place*: a point, a radius and a name, and every photo taken
 within that radius is labelled that way.
+
+Nobody knows the coordinates of their mother's house, so neither screen makes you
+type them. Both have a map: tap it, or drag the pin, and the fields fill
+themselves in — and the place form draws the circle its radius covers, so you can
+see whether the house is inside it. *Use where I am now* is there for the
+commonest case of all, which is naming the house the phone is standing in. The
+fields stay, and stay the truth: they are what gets saved, they can still be
+typed into, and emptying one still means "go back to what the photo says".
+
+The map opens on the best guess the site can make — the photo's own location, a
+place already named, the most recent photo that knows where it was. When nothing
+at all is known it opens on the whole world, which is honest but a lot of
+pinching; fix one photo or name one place and everything after it opens in the
+right neighbourhood.
 
 A photo added a moment ago is not on that list until the site has rebuilt: the
 build is what reads the photo and gives it a name.
@@ -167,9 +218,19 @@ python3 -m http.server               # then open http://localhost:8000
 | `geocache.json` | Place names already looked up, so each location costs one request ever. |
 | `src/grace_pipeline/` | The pipeline: EXIF → manifest, HEIC → web JPEG. |
 | `index.html`, `app.js` | The gallery. |
+| `manifest.js` | Reading `photos.json` — the freshest copy there is, and nothing to handle when there is none. |
 | `photo-url.js` | The address of an open photo: `?photo=<hash>`, so links can be shared. |
+| `share-photo.js` | Sending one photo: the file where the phone will carry one, the link where it will not, the clipboard where there is no share sheet at all. |
 | `upload.html`, `upload.js` | The upload page, and the fixing screen at `?fix`. |
+| `arrival.js` | Waiting for uploaded photos to turn up in the gallery, and giving up honestly when one never does. |
 | `corrections.js` | Reading and changing `overrides.json` without hand-editing it: one photo's fields, a named place, merged into whatever the file already says. |
+| `map-point.js` | What a tap on the map becomes in the file, and where the map should be looking when it opens. |
+| `map-picker.js` | That map itself. |
+| `map-tiles.js` | Whose tiles both maps are drawn with, said once. |
+| `manifest.webmanifest` | What a phone reads to offer the site as an app of its own. Its name and language have to match `config.json`. |
+| `icon.svg`, `icons/` | The mark, and the sizes phones ask for. Redraw with `.github/scripts/make-icons.py`. |
+| `sw.js` | The service worker: what makes the app installable, and what serves it with no network. |
+| `cache-policy.js` | Which requests that worker may keep and which it must always ask for — the one file here whose mistakes would be served to the family from their own phones. |
 | `github.js` | Talking to this repository: which repo it is, the token, reading and writing files. |
 | `language.js` | Every word both pages say, in each language they say it in. Change a sentence here, not in the page. |
 | `dates.js` | How the gallery writes a month, a date and an age — each language writes all three differently. |

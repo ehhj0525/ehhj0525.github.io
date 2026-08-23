@@ -13,6 +13,7 @@
  */
 
 import { t } from "./language.js";
+import { loadPhotos } from "./manifest.js";
 
 /** The corrections file, at the root of the repository. */
 export const CORRECTIONS_PATH = "overrides.json";
@@ -68,17 +69,7 @@ export function readCorrections(text) {
  * file the gallery renders, and the thumbnails come from the site anyway. A
  * build that has not run yet is not an error to report, only an empty screen.
  */
-export async function loadRecentPhotos() {
-  try {
-    // GitHub Pages caches hard, and this file is rewritten by every build.
-    const response = await fetch(`photos.json?t=${Date.now()}`, { cache: "no-store" });
-    if (!response.ok) throw new Error(response.status);
-    const payload = await response.json();
-    return mostRecentlyAdded(payload.photos ?? []);
-  } catch {
-    return [];
-  }
-}
+export const loadRecentPhotos = async () => mostRecentlyAdded(await loadPhotos());
 
 /**
  * The photos added most recently, listed in the manifest's own order.

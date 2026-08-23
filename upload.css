@@ -271,6 +271,82 @@ button {
   font-size: 0.85rem;
 }
 
+/* The live answer to "did it work": the same shape as the note above it, in the
+   quieter of the two colours, because it is news rather than an instruction. */
+.arrival {
+  margin: 10px 0 0;
+  padding: 12px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent) 5%, transparent);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* ---------- saying where, on a map ---------- */
+
+/* Tall enough to put a pin in with a thumb, short enough that the fields it
+   writes into are still on the screen under it. */
+.picker-map {
+  height: min(46vh, 280px);
+  margin-bottom: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg);
+  /* Leaflet stacks its own panes high; this keeps them inside the map rather
+     than over the sticky header. */
+  isolation: isolate;
+}
+
+.picker-hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+/* The circle a named place will cover: enough to see whether the house is in
+   it, faint enough to see the house through it. */
+.picker-ring {
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  fill: var(--accent);
+  fill-opacity: 0.12;
+}
+
+/* Quieter than a save, and outside the form for the same reason: this fills the
+   fields in, it does not commit anything. */
+.locate {
+  padding: 7px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+/* One row's map, shut until it is asked for — a map per row, open, would be
+   thirty maps and a screen nobody can scroll. */
+.row-map summary {
+  padding: 4px 0 8px;
+  color: var(--accent);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+#place-locate-state {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+#place-locate-state.failed {
+  color: #c0392b;
+}
+
 /* ---------- fixing a photo ---------- */
 
 /* The header holds two links now — out to the gallery, and over to the fixing

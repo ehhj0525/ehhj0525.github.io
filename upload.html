@@ -5,7 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Add photos</title>
     <meta name="robots" content="noindex" />
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌿</text></svg>" />
+
+    <!-- The same app as the gallery: a phone that has this page open — because
+         adding photos is what it was opened for — should be able to install
+         from here too, and land in the same installed app either way. -->
+    <link rel="icon" href="icon.svg" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <meta name="theme-color" content="#fbf9f6" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#171513" media="(prefers-color-scheme: dark)" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+
+    <!-- The map to say where a photo was taken on, in place of typing a
+         latitude into a box. The same Leaflet the gallery's map is drawn with,
+         and the same version, so a phone that has been to the gallery has it
+         already. -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    />
     <link rel="stylesheet" href="style.css" />
     <link rel="stylesheet" href="upload.css" />
   </head>
@@ -134,6 +155,10 @@
           <a id="actions-link" href="#" target="_blank" rel="noopener" data-i18n="upload.done.link"
             >watch progress</a>.
         </p>
+        <!-- The answer to the question the note above only used to raise: the
+             page watches the gallery until the photos are really in it, and says
+             so. Filled in by upload.js, in whichever language. -->
+        <p id="arrival" class="arrival" role="status" hidden></p>
         <button id="show-code" type="button" data-i18n="upload.handoff.heading">Set up another device</button>
         <button id="forget" class="forget" type="button" data-i18n="upload.token.forget">
           Forget token on this device
@@ -160,6 +185,23 @@
             Every photo taken within the radius is labelled with this name instead of whatever
             OpenStreetMap calls it — including the ones already published.
           </p>
+
+          <!-- Nobody knows the coordinates of their mother's house, and a digit
+               mistyped into the boxes below puts a place in the sea without
+               saying anything about it. So: here is the map, put the pin on the
+               house. The boxes stay, and stay the truth — the map writes into
+               them, which is also what leaves a coordinate somebody really does
+               have written down typeable. The map itself is only built when this
+               is opened; before that it is a Leaflet map nobody asked for. -->
+          <div id="place-map" class="picker-map"></div>
+          <p class="picker-hint">
+            <span data-i18n="upload.map.hint">Tap the map, or drag the pin.</span>
+            <button id="place-locate" class="locate" type="button" data-i18n="upload.map.locate">
+              Use where I am now
+            </button>
+            <span id="place-locate-state" class="state" role="status"></span>
+          </p>
+
           <form id="place-form">
             <!-- The label's words are in a span of their own: the input is the
                  label's other child, and swapping the text of the label itself
@@ -219,6 +261,12 @@
       </section>
     </main>
 
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+      defer
+    ></script>
     <!-- A module so it can import github.js; module scripts defer by default. -->
     <script src="upload.js" type="module"></script>
   </body>

@@ -28,6 +28,18 @@ A public static website showing photos of the owner's son, browsable as a **Time
 - **Site tech**: no framework — vanilla HTML/CSS/JS reading `photos.json`; Leaflet + OpenStreetMap tiles for the Map view (free, no API key).
 - **Pipeline tech**: Python (Pillow + pillow-heif for HEIC, Pillow for EXIF), because pillow-heif ships HEIC decoding via pip with no native-build friction. Runs on `push`, commits results back to `main`; GitHub Pages serves `main`.
 
+## Decisions added since (same rules: flip any of these by editing this spec)
+
+| # | Decision | Choice |
+|---|----------|--------|
+| 13 | Installable | **Yes** — manifest + icons + service worker, so the site goes on the home screen as an app rather than a bookmark. A phone only offers the app treatment to a site that can answer with no network, so the worker is what buys the icon. |
+| 14 | What is cached | **Content-hashed files only** (`web/`, `thumbs/`, versioned CDN libraries). Everything else is network-first with the cached copy used only when the fetch fails, so a fresh upload can never be hidden by a cache. `api.github.com` is never touched. |
+| 15 | App name | The manifest repeats `config.json`'s title and language, and a **test fails when the two disagree** — rather than the pipeline generating the manifest. One fewer moving part in the build; the drift is caught at the only moment it can be fixed. |
+| 16 | Sharing a photo | **The file first, the link second.** A photo sent into a chat is looked at where it lands by somebody who may never follow a link. Where the browser cannot carry a file, the link; where there is no share sheet, the clipboard. |
+| 17 | After an upload | The page **watches the published manifest** until the photos are in it, then says so. It gives up after 8 minutes and says that too — a photo already in the gallery is deduplicated silently and never arrives at all. |
+| 18 | Saying where a photo was | **A map to tap**, on both the place form and each photo's row. The coordinate fields remain the record and remain editable; the map writes into them. Opening a map never writes a correction on its own. |
+| 19 | Where a picker opens | The best guess the site already holds — the point in the fields, the photo's own location, a correction saved a moment ago, a named place, the most recent located photo — and the whole world when it holds none. A guess gets no pin. |
+
 ## Repository layout
 
 ```
@@ -42,6 +54,8 @@ grace/
 ├── config.json       # Birth date, site title
 ├── index.html / app.js / style.css   # The site (Timeline + Map + Upload page)
 ├── upload.html       # Upload page
+├── manifest.webmanifest / icon.svg / icons/   # The installed app's name and mark
+├── sw.js             # Service worker: installable, and openable with no network
 └── .github/workflows/pipeline.yml
 ```
 

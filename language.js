@@ -46,6 +46,9 @@ const en = {
   "gallery.previous": "Previous photo",
   "gallery.next": "Next photo",
   "gallery.approximate": " (date approximate)",
+  "gallery.share": "Send this photo",
+  "gallery.share.copied": "Link copied.",
+  "gallery.share.failed": "This photo could not be sent.",
   "gallery.map.unavailable": "The map could not be loaded.",
   "gallery.map.none": "None of the photos have location information yet.",
   "gallery.map.missing": ({ count }) =>
@@ -141,6 +144,25 @@ const en = {
   ],
   "upload.done.link": "watch progress",
 
+  "upload.arrival.watching": ({ done, total }) =>
+    `Waiting for them to appear in the gallery — ${done} of ${total} so far.`,
+  "upload.arrival.arrived": ({ count, link }) => [
+    `${photos(count)} ${count === 1 ? "is" : "are"} in the gallery now — `,
+    link,
+    ".",
+  ],
+  "upload.arrival.link": "have a look",
+  // The likeliest reason by far, and one nothing else would ever say: a photo
+  // that is already in the gallery is skipped without a word, and the file it
+  // was uploaded as simply disappears.
+  "upload.arrival.slow": ({ count, link }) => [
+    `${photos(count)} ${count === 1 ? "has" : "have"} not appeared. ${
+      count === 1 ? "It may already have been" : "They may already have been"
+    } in the gallery, or the site may still be rebuilding — `,
+    link,
+    ".",
+  ],
+
   "upload.handoff.heading": "Set up another device",
   "upload.handoff.warning":
     "Anyone who photographs this code can add photos to the gallery for as long as this " +
@@ -179,6 +201,12 @@ const en = {
   "upload.place.add": "Add place",
   "upload.place.added": "Added. The next build relabels the photos near it.",
   "upload.place.named": ({ names }) => `Named already: ${names}`,
+
+  "upload.map.pick": "Find it on the map",
+  "upload.map.hint": "Tap the map, or drag the pin. The fields below follow it.",
+  "upload.map.locate": "Use where I am now",
+  "upload.map.locating": "Finding where you are…",
+  "upload.map.refused": "This device would not say where it is.",
 
   "upload.field.name": "Name",
   "upload.field.lat": "Latitude",
@@ -235,6 +263,9 @@ const ko = {
   "gallery.previous": "이전 사진",
   "gallery.next": "다음 사진",
   "gallery.approximate": " (날짜는 추정)",
+  "gallery.share": "이 사진 보내기",
+  "gallery.share.copied": "링크를 복사했어요.",
+  "gallery.share.failed": "사진을 보내지 못했어요.",
   "gallery.map.unavailable": "지도를 불러오지 못했어요.",
   "gallery.map.none": "아직 위치가 기록된 사진이 없어요.",
   "gallery.map.missing": ({ count }) => `위치가 없는 ${jang(count)}은 타임라인에만 있어요.`,
@@ -320,6 +351,19 @@ const ko = {
   "upload.done": ({ link }) => ["올렸어요. 1~2분 뒤에 사이트가 다시 만들어져요 — ", link, "."],
   "upload.done.link": "진행 상황 보기",
 
+  // 올라오다, the same verb the sentence below finishes with: what is being
+  // waited for and what then happened should not be two different words.
+  "upload.arrival.watching": ({ done, total }) =>
+    `갤러리에 올라오기를 기다리는 중 — ${total}장 중 ${done}장 도착.`,
+  "upload.arrival.arrived": ({ count, link }) => [`${jang(count)}이 갤러리에 올라왔어요 — `, link, "."],
+  "upload.arrival.link": "보러 가기",
+  "upload.arrival.slow": ({ count, link }) => [
+    `${jang(count)}은 아직 보이지 않아요. 이미 갤러리에 있던 사진이거나, 사이트가 아직 다시 ` +
+      "만들어지는 중일 수 있어요 — ",
+    link,
+    ".",
+  ],
+
   "upload.handoff.heading": "다른 기기 설정하기",
   "upload.handoff.warning":
     "이 코드를 찍은 사람은 누구나, 이 토큰이 살아 있는 동안 갤러리에 사진을 올릴 수 있어요. " +
@@ -357,6 +401,12 @@ const ko = {
   "upload.place.add": "장소 추가",
   "upload.place.added": "추가했어요. 다음 빌드에서 근처 사진의 이름이 바뀌어요.",
   "upload.place.named": ({ names }) => `이미 이름 지은 곳: ${names}`,
+
+  "upload.map.pick": "지도에서 찾기",
+  "upload.map.hint": "지도를 누르거나 핀을 끌어 옮기세요. 아래 칸은 따라 바뀌어요.",
+  "upload.map.locate": "지금 있는 곳 쓰기",
+  "upload.map.locating": "위치를 찾는 중…",
+  "upload.map.refused": "이 기기가 위치를 알려주지 않았어요.",
 
   "upload.field.name": "이름",
   "upload.field.lat": "위도",

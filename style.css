@@ -31,6 +31,12 @@ body {
   color: var(--ink);
   font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", system-ui, sans-serif;
   -webkit-text-size-adjust: 100%;
+  /* Korean is allowed to break a line between any two characters, which by
+     default leaves the "요." of a sentence stranded on a line of its own. This
+     breaks at spaces instead, the way the language is actually read. The few
+     places holding something genuinely unbreakable — a filename, a decoder's
+     complaint — already say so for themselves with overflow-wrap. */
+  word-break: keep-all;
 }
 
 /* ---------- header ---------- */
@@ -204,6 +210,9 @@ main {
   border-radius: var(--radius);
   overflow: hidden;
   border: 1px solid var(--line);
+  /* Leaflet stacks its own panes high; this keeps them inside the map rather
+     than over the sticky header. */
+  isolation: isolate;
 }
 
 .map-note {
@@ -278,6 +287,7 @@ main {
 }
 
 .lightbox-close,
+.lightbox-share,
 .lightbox-nav {
   position: absolute;
   z-index: 2;
@@ -295,6 +305,46 @@ main {
   width: 40px;
   height: 40px;
   font-size: 26px;
+}
+
+/* Beside the ✕ rather than opposite it: both belong to the photo, and the far
+   corners are where a thumb rests while holding the phone. */
+.lightbox-share {
+  top: max(12px, env(safe-area-inset-top, 0px));
+  right: 60px;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+}
+
+/* display: grid above would otherwise show it on a browser that cannot share. */
+.lightbox-share[hidden] {
+  display: none;
+}
+
+.lightbox-share:disabled {
+  opacity: 0.5; /* while the photo is being fetched for the share sheet */
+}
+
+/* What the phone's own share sheet cannot say for itself. */
+.toast {
+  position: absolute;
+  left: 50%;
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 3;
+  margin: 0;
+  padding: 9px 16px;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.14);
+  color: #efe9e2;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.toast[hidden] {
+  display: none;
 }
 
 .lightbox-nav {

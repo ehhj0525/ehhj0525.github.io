@@ -6,6 +6,7 @@
  * lives in github.js; this file is only the page around it.
  */
 
+import { watchForArrival } from "./arrival.js";
 import { loadConfig } from "./config.js";
 import {
   correctionFor,
@@ -21,7 +22,11 @@ import {
 } from "./corrections.js";
 import { failureHeading, loadFailures } from "./failure-report.js";
 import { createClient, detectRepo, encodeBase64 } from "./github.js";
+import { installApp } from "./install-app.js";
 import { t, useLanguage } from "./language.js";
+import { loadPhotos } from "./manifest.js";
+import { createPicker } from "./map-picker.js";
+import { openingView, pointFrom, pointText } from "./map-point.js";
 import { qrSvg } from "./qr.js";
 import { loadSealedToken, unseal } from "./sealed-token.js";
 import { setupUrl, tokenFromFragment } from "./setup-link.js";
@@ -65,6 +70,7 @@ const el = {
   queue: document.getElementById("queue"),
   doneNote: document.getElementById("done-note"),
   actionsLink: document.getElementById("actions-link"),
+  arrival: document.getElementById("arrival"),
   showCode: document.getElementById("show-code"),
   handOff: document.getElementById("hand-off"),
   setupCode: document.getElementById("setup-code"),
@@ -75,6 +81,10 @@ const el = {
   fixBack: document.getElementById("fix-back"),
   fixList: document.getElementById("fix-list"),
   fixState: document.getElementById("fix-state"),
+  place: document.getElementById("place"),
+  placeMap: document.getElementById("place-map"),
+  placeLocate: document.getElementById("place-locate"),
+  placeLocateState: document.getElementById("place-locate-state"),
   placeForm: document.getElementById("place-form"),
   placeName: document.getElementById("place-name"),
   placeLat: document.getElementById("place-lat"),
@@ -88,8 +98,12 @@ const el = {
 let github;
 
 /**
- * Commit one photo. Two uploads before the pipeline runs can collide on a
- * filename, so a taken name gets a numbered variant rather than an error.
+ * Commit one photo, and hand back the name it was committed under.
+ *
+ * Two uploads before the pipeline runs can collide on a filename, so a taken
+ * name gets a numbered variant rather than an error — which is exactly why the
+ * name has to come back from here: it is what the manifest will call the photo,
+ * and so what the page watches the gallery for afterwards.
  */
 async function commitPhoto(file, content) {
   const safeName = file.name.replace(/[^\w.\-가-힣]/g, "_");
@@ -100,7 +114,8 @@ async function commitPhoto(file, content) {
   for (let attempt = 0; attempt < NAME_ATTEMPTS; attempt += 1) {
     const name = attempt === 0 ? safeName : `${stem}-${attempt}${extension}`;
     try {
-      return await github.createFile(`photos/${name}`, { content, message: `photo: add ${name}` });
+      await github.createFile(`photos/${name}`, { content, message: `photo: add ${name}` });
+      return name;
     } catch (error) {
       const nameTaken = error.status === 422 || error.status === 409;
       if (!nameTaken || attempt === NAME_ATTEMPTS - 1) throw error;
@@ -147,9 +162,16 @@ function queueRow(file) {
  */
 async function upload(files) {
   el.doneNote.hidden = true;
+  el.arrival.hidden = true;
+
+  // Asked before anything is committed, and read after: what the failure report
+  // was already saying is not news about this batch. Uploading a photo again is
+  // how a failed one is retried, so its name is very often in there already.
+  const reportedBefore = loadFailures();
+
   const rows = [...files].map((file) => [file, queueRow(file)]);
+  const committed = [];
   let done = 0;
-  let succeeded = 0;
   const showCount = () => {
     el.progress.textContent = batchProgress(done, rows.length);
   };
@@ -163,9 +185,8 @@ async function upload(files) {
       if (!looksLikePhoto(file)) throw new Error(t("upload.queue.notPhoto"));
       if (file.size > MAX_BYTES) throw new Error(t("upload.queue.tooLarge"));
       row.set(t("upload.queue.uploading"));
-      await commitPhoto(file, encodeBase64(await file.arrayBuffer()));
+      committed.push(await commitPhoto(file, encodeBase64(await file.arrayBuffer())));
       row.set(t("upload.queue.added"), "done");
-      succeeded += 1;
     } catch (error) {
       row.set(error.message, "failed");
     }
@@ -174,9 +195,103 @@ async function upload(files) {
     showCount();
   }
 
-  el.progress.textContent = batchSummary(succeeded, rows.length - succeeded);
-  if (succeeded > 0) el.doneNote.hidden = false;
+  el.progress.textContent = batchSummary(committed.length, rows.length - committed.length);
+  if (committed.length > 0) {
+    el.doneNote.hidden = false;
+    // Nothing waits on this: it takes minutes.
+    watchTheGallery(committed, (await reportedBefore).map((record) => record.name));
+  }
 }
+
+/* -------------------------------------------------------- did they arrive? */
+
+/**
+ * Watch the gallery until the photos just committed are really in it.
+ *
+ * A commit is not a photo on a website — a workflow has to read it and Pages has
+ * to publish the result — and until now the page said as much and stopped there,
+ * leaving the only question anybody actually has ("did it work?") to be answered
+ * by going and looking, or by reading a build log written for programmers.
+ *
+ * Which photos to watch for is the batch's committed filenames: the pipeline
+ * names each manifest entry after the file it came from. The waiting itself is
+ * in arrival.js, where it is tested.
+ */
+let watching = 0;
+
+async function watchTheGallery(names, reportedBefore) {
+  // A second batch supersedes the first: two watches writing to one line would
+  // each undo the other's count. The old one is abandoned rather than merely
+  // silenced, or it would go on asking the site for photos for eight minutes
+  // after anybody stopped caring about them.
+  const mine = (watching += 1);
+  const stale = () => mine !== watching;
+
+  const say = (...parts) => {
+    if (stale()) return;
+    el.arrival.replaceChildren(...parts);
+    el.arrival.hidden = false;
+  };
+
+  say(t("upload.arrival.watching", { done: 0, total: names.length }));
+
+  const outcome = await watchForArrival(names, {
+    loadPhotos,
+    loadFailures,
+    reportedBefore,
+    stopped: stale,
+    sleep: (ms) => new Promise((resume) => setTimeout(resume, ms)),
+    onProgress: ({ arrived }) =>
+      say(t("upload.arrival.watching", { done: arrived.length, total: names.length })),
+  });
+  if (stale()) return;
+
+  // A photo the pipeline could not read is now named in the report, which is
+  // where the reason for it is.
+  if (outcome.failed.length > 0) showFailures();
+
+  // Both halves of a partly-arrived batch, because both are news: a batch with
+  // one duplicate in it is the ordinary case, and being told only about the one
+  // that never appeared reads as though none of them did.
+  const said = [];
+  if (outcome.arrived.length > 0) {
+    said.push(...t("upload.arrival.arrived", { count: outcome.arrived.length, link: galleryLink() }));
+  }
+  if (outcome.missing.length > 0) {
+    if (said.length > 0) said.push(" ");
+    said.push(...t("upload.arrival.slow", { count: outcome.missing.length, link: actionsLink() }));
+  } else {
+    // Nothing is still coming, so the sentence about waiting has nothing to say.
+    el.doneNote.hidden = true;
+  }
+
+  if (said.length > 0) say(...said);
+  else el.arrival.hidden = true; // every one of them failed, and the report says so
+}
+
+/** Where the workflow's own account of the build is. */
+const actionsUrl = () => `https://github.com/${github.repo.owner}/${github.repo.name}/actions`;
+
+/**
+ * A link of its own each time. The nodes handed to a sentence become part of it,
+ * so passing the note's own link would move it out of the note.
+ */
+function link(href, text, away = false) {
+  const anchor = document.createElement("a");
+  anchor.href = href;
+  anchor.textContent = text;
+  if (away) {
+    anchor.target = "_blank";
+    anchor.rel = "noopener";
+  }
+  return anchor;
+}
+
+const actionsLink = () => link(actionsUrl(), t("upload.done.link"), true);
+
+// Not in a new tab: this one has done its job, and the gallery is where the
+// photos are.
+const galleryLink = () => link("./", t("upload.arrival.link"));
 
 /* --------------------------------------------------------- failure report */
 
@@ -229,6 +344,13 @@ let corrections = { photos: {}, places: [] };
 // popstate arrives a beat after history.back(), so without this a second tap on
 // the way out would go back twice and leave the page.
 let leavingFix = false;
+
+/**
+ * The photos the fix screen is showing. Held because the maps below open on the
+ * best guess the site can make, and the most recent photo that knows where it
+ * was is the best guess there is.
+ */
+let shownPhotos = [];
 
 /** A labelled field: what the correction says, over a hint of what the photo says. */
 function fixField(label, value, { hint = "", type = "text" } = {}) {
@@ -307,7 +429,7 @@ function fixRow(photo) {
 
   const form = document.createElement("form");
   form.className = "fix-form";
-  form.append(taken.field, lat.field, lon.field, place.field, save, state);
+  form.append(taken.field, lat.field, lon.field, rowMap(photo, lat.input, lon.input), place.field, save, state);
   form.addEventListener("submit", (event) => {
     event.preventDefault();
     saveRow(photo, save, state, {
@@ -324,6 +446,140 @@ function fixRow(photo) {
   const row = document.createElement("li");
   row.append(details);
   return row;
+}
+
+/* ------------------------------------------------------------- where it was */
+
+/*
+ * The maps for saying where something is, in place of typing a latitude into a
+ * box.
+ *
+ * Both of them write into the fields rather than replacing them: the fields are
+ * what gets saved, they can still be typed into by somebody who has the
+ * coordinates written down, and emptying one still means "go back to what the
+ * photo itself says". A map is an easier way to answer the question, not a
+ * different question.
+ *
+ * Each is built the first time it is asked for. Leaflet measures its container
+ * as it is created, so one built inside a shut disclosure would come out
+ * zero-sized — which is also why reopening one refreshes it.
+ */
+
+let placePicker = null;
+
+/** One picker per row of the fix list, so a row is only ever mapped once. */
+const rowPickers = new Map();
+
+/** A point chosen on a map, into the two fields that are what actually saves. */
+function writePoint(point, latInput, lonInput) {
+  const text = pointText(point);
+  latInput.value = text.lat;
+  lonInput.value = text.lon;
+}
+
+/**
+ * Everywhere the site already knows about, best guess first, for a map with
+ * nothing else to open on.
+ *
+ * Corrections come before photos on purpose. A location saved on this screen a
+ * minute ago is the freshest thing anybody has said about where this family
+ * is — and it will not be in the manifest until the site rebuilds, so without
+ * this, fixing a second photo would start from the whole world again exactly as
+ * the first one did. Reversed, because a correction saved just now is written at
+ * the end of the file.
+ *
+ * That matters most in the case this gallery is actually in: every photo in it
+ * arrived with its metadata stripped, so nothing has a location at all and the
+ * first map really does open on the world. One photo fixed, or one place named,
+ * and every map after it opens in the right neighbourhood.
+ */
+const placesKnown = () => [
+  ...Object.values(corrections.photos).reverse(),
+  ...shownPhotos,
+  ...corrections.places,
+];
+
+/** The map under the place form, with the circle the place will cover on it. */
+function showPlacePicker() {
+  if (placePicker) {
+    placePicker.refresh();
+    return;
+  }
+
+  placePicker = createPicker(el.placeMap, {
+    view: openingView({
+      point: pointFrom(el.placeLat.value, el.placeLon.value),
+      nearby: placesKnown(),
+    }),
+    radiusM: el.placeRadius.value || DEFAULT_RADIUS_M,
+    onPick: (point) => writePoint(point, el.placeLat, el.placeLon),
+  });
+
+  // With no map there is nowhere for a located point to go.
+  el.placeLocate.hidden = !placePicker;
+}
+
+/**
+ * Where the phone says it is. Worth the permission prompt: the place being named
+ * is very often the house the phone is standing in.
+ */
+async function locateOnMap(picker, state) {
+  if (!picker) return;
+
+  report(state, t("upload.map.locating"));
+  try {
+    await picker.locate();
+    report(state, "");
+  } catch {
+    // Refused, switched off, or timed out. Which of the three it was is nothing
+    // anybody can act on — the map is still there to tap.
+    report(state, t("upload.map.refused"), "failed");
+  }
+}
+
+/** The same map for one photo, shut until it is asked for. */
+function rowMap(photo, latInput, lonInput) {
+  const canvas = document.createElement("div");
+  canvas.className = "picker-map";
+
+  const summary = document.createElement("summary");
+  summary.textContent = t("upload.map.pick");
+
+  const hint = document.createElement("p");
+  hint.className = "picker-hint";
+  hint.textContent = t("upload.map.hint");
+
+  const disclosure = document.createElement("details");
+  disclosure.className = "row-map";
+  disclosure.append(summary, canvas, hint);
+
+  disclosure.addEventListener("toggle", () => {
+    if (!disclosure.open) return;
+
+    const built = rowPickers.get(canvas);
+    if (built) {
+      built.refresh();
+      return;
+    }
+
+    const picker = createPicker(canvas, {
+      view: openingView({
+        point: pointFrom(latInput.value, lonInput.value),
+        photo,
+        nearby: placesKnown(),
+      }),
+      onPick: (point) => writePoint(point, latInput, lonInput),
+    });
+    if (picker) rowPickers.set(canvas, picker);
+  });
+
+  return disclosure;
+}
+
+/** A screen being thrown away takes its maps with it, or they leak. */
+function forgetRowPickers() {
+  for (const picker of rowPickers.values()) picker.destroy();
+  rowPickers.clear();
 }
 
 /** Say how a save went where it was asked for, rather than at the top of the screen. */
@@ -366,6 +622,11 @@ async function addNamedPlace() {
     corrections = readCorrections(committed);
     showNamedPlaces();
     el.placeForm.reset();
+    // The fields are empty again, so the map must not still be pointing at the
+    // house they described — and the radius goes back to the pipeline's default
+    // with the field that held it.
+    placePicker?.clear();
+    placePicker?.setRadius(el.placeRadius.value || DEFAULT_RADIUS_M);
     report(el.placeState, t("upload.place.added"), "done");
   } catch (error) {
     report(el.placeState, error.message, "failed");
@@ -386,6 +647,7 @@ async function showFix() {
   el.fix.hidden = false;
   el.toFix.hidden = true;
 
+  forgetRowPickers(); // the rows about to be replaced hold maps of their own
   el.fixList.replaceChildren();
   el.fixState.hidden = false;
   report(el.fixState, t("upload.fix.reading"));
@@ -403,14 +665,19 @@ async function showFix() {
     return;
   }
 
+  shownPhotos = photos;
   showNamedPlaces();
   el.fixList.replaceChildren(...photos.map(fixRow));
   report(el.fixState, photos.length === 0 ? t("upload.fix.empty") : "");
   el.fixState.hidden = photos.length > 0;
+
+  // The place form's own map was measured while this section was hidden.
+  if (el.place.open) showPlacePicker();
 }
 
 function hideFix() {
   el.fix.hidden = true;
+  forgetRowPickers();
   // The rows hold thumbnails and half-typed fields for a screen that is gone.
   el.fixList.replaceChildren();
   el.picker.hidden = false;
@@ -448,7 +715,7 @@ function showPicker() {
   el.handOff.hidden = true;
   el.fix.hidden = true;
   el.toFix.hidden = false;
-  el.actionsLink.href = `https://github.com/${github.repo.owner}/${github.repo.name}/actions`;
+  el.actionsLink.href = actionsUrl();
 
   // The token just verified, so it still works — this only says for how long.
   const notice = expiryNotice(github.tokenExpiry());
@@ -546,6 +813,8 @@ function takeScannedToken() {
 }
 
 async function start() {
+  installApp(); // this page is an entrance to the app as much as the gallery is
+
   const config = await loadConfig();
   useLanguage(config.language);
   translatePage();
@@ -651,6 +920,20 @@ async function start() {
     event.preventDefault();
     addNamedPlace();
   });
+
+  // Built on the way in rather than with the page: a Leaflet map behind a shut
+  // disclosure is tiles fetched for nobody.
+  el.place.addEventListener("toggle", () => {
+    if (el.place.open) showPlacePicker();
+  });
+
+  // The circle is how you see whether the house is inside the radius, so it
+  // follows the field as it is typed into.
+  el.placeRadius.addEventListener("input", () => {
+    placePicker?.setRadius(el.placeRadius.value || DEFAULT_RADIUS_M);
+  });
+
+  el.placeLocate.addEventListener("click", () => locateOnMap(placePicker, el.placeLocateState));
 
   el.fileInput.addEventListener("change", () => {
     if (el.fileInput.files.length) upload(el.fileInput.files);

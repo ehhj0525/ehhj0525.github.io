@@ -62,3 +62,17 @@ The human label for a Location ("Seoul", "할머니집"). Reverse-geocoded autom
 **Pipeline**:
 The GitHub Action that runs on every push: converts/resizes Originals into Web versions and Thumbnails, extracts EXIF into the Manifest, reverse-geocodes new Locations, then deletes the Originals.
 _Avoid_: Build, CI
+
+**App**:
+The site as a phone keeps it: on the home screen, with the gallery's own icon and no browser bar, opening whether or not there is a network. The same two pages — a phone is offered this only because the Shell can answer for itself.
+_Avoid_: PWA, native app
+
+**Shell**:
+The pages, stylesheets and modules the App is made of, kept on the phone as a set so it opens offline. Not the Photos, which are kept one at a time as they are looked at.
+
+**Arrival**:
+A Photo appearing in the published Manifest after being uploaded — the moment it is really in the gallery, which the Upload page waits for and reports. A duplicate never arrives: the Pipeline skips it silently.
+
+**Picker**:
+The map on the Upload page for saying where something is — a named Place, or one Photo's Location. It writes into the coordinate fields, which remain what is saved.
+_Avoid_: Map view (that is the gallery's)

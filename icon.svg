@@ -1,0 +1,23 @@
+<!--
+  The gallery's mark: a leaf, the same one the tab icon used to draw with an
+  emoji. It is a file rather than a data URL now because the home-screen app
+  needs an icon of its own, and the tab and the home screen should not be
+  wearing two different leaves.
+
+  This is the source of every icon in icons/ (see .github/scripts/make-icons.py,
+  which is run by hand when the mark changes). The cream is the site's own
+  background colour: an icon has nowhere to be transparent to.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="512" height="512">
+  <title>Grace</title>
+  <rect width="100" height="100" fill="#fbf9f6" />
+  <path d="M50 12 C77 35 77 65 50 84 C23 65 23 35 50 12 Z" fill="#7fa87a" />
+  <g fill="none" stroke="#4a7450" stroke-linecap="round">
+    <path d="M50 90 L50 24" stroke-width="4.5" />
+    <g stroke-width="3" opacity="0.5">
+      <path d="M50 65 C58 61 63 53 65 45" />
+      <path d="M50 53 C42 49 37 41 35 33" />
+      <path d="M50 41 C56 38 60 33 62 28" />
+    </g>
+  </g>
+</svg>

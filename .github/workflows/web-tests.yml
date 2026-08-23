@@ -8,9 +8,18 @@ on:
     branches: [main]
     paths:
       - "*.js"
-      # The tests read the pages too: every key the markup names has to be a
-      # sentence the language tables actually have.
+      # The tests read the pages and the stylesheets too: every key the markup
+      # names has to be a sentence the language tables actually have, and every
+      # element either of them reaches for has to exist.
       - "*.html"
+      - "*.css"
+      # The installed app's name and language are a copy of these, and the tests
+      # are what catch the two drifting apart. Not photos.json: the pipeline
+      # rewrites that on every upload, and none of this changes when it does.
+      - "config.json"
+      - "manifest.webmanifest"
+      - "icon.svg"
+      - "icons/**"
       - "tests/js/**"
       - ".github/scripts/**"
       - "package.json"
@@ -20,9 +29,18 @@ on:
   pull_request:
     paths:
       - "*.js"
-      # The tests read the pages too: every key the markup names has to be a
-      # sentence the language tables actually have.
+      # The tests read the pages and the stylesheets too: every key the markup
+      # names has to be a sentence the language tables actually have, and every
+      # element either of them reaches for has to exist.
       - "*.html"
+      - "*.css"
+      # The installed app's name and language are a copy of these, and the tests
+      # are what catch the two drifting apart. Not photos.json: the pipeline
+      # rewrites that on every upload, and none of this changes when it does.
+      - "config.json"
+      - "manifest.webmanifest"
+      - "icon.svg"
+      - "icons/**"
       - "tests/js/**"
       - ".github/scripts/**"
       - "package.json"

@@ -4,9 +4,20 @@
  */
 
 import { loadConfig } from "./config.js";
-import { ageLabel, formatDate, monthHeading } from "./dates.js";
+import { ageLabel, monthHeading } from "./dates.js";
+import { installApp } from "./install-app.js";
 import { t, useLanguage } from "./language.js";
+import { loadPhotos } from "./manifest.js";
+import { OSM_OPTIONS, OSM_TILES } from "./map-tiles.js";
 import { indexOfPhoto, photoIdFromUrl, urlForPhoto, urlWithoutPhoto } from "./photo-url.js";
+import {
+  COPIED,
+  FAILED,
+  photoCaption,
+  shareFileName,
+  sharePhoto,
+  UNAVAILABLE,
+} from "./share-photo.js";
 import { translatePage } from "./translate-page.js";
 
 const state = {
@@ -29,27 +40,17 @@ const el = {
   lightbox: document.getElementById("lightbox"),
   lightboxImage: document.getElementById("lightbox-image"),
   lightboxCaption: document.getElementById("lightbox-caption"),
+  share: document.getElementById("share"),
+  toast: document.getElementById("toast"),
 };
 
 /* ---------------------------------------------------------------- loading */
 
-/** Every photo the last build knew about, or none at all if it cannot be read. */
-async function loadManifest() {
-  try {
-    // GitHub Pages caches aggressively; a fresh upload should show up immediately.
-    const response = await fetch(`photos.json?t=${Date.now()}`, { cache: "no-store" });
-    if (!response.ok) throw new Error(response.status);
-    return await response.json();
-  } catch {
-    return { photos: [] };
-  }
-}
-
 async function start() {
-  const [config, manifest] = await Promise.all([loadConfig(), loadManifest()]);
+  const [config, photos] = await Promise.all([loadConfig(), loadPhotos()]);
 
   state.config = config;
-  state.photos = manifest.photos ?? [];
+  state.photos = photos;
   document.title = state.config.title;
   el.title.textContent = state.config.title;
 
@@ -60,7 +61,9 @@ async function start() {
   renderTimeline();
   wireTabs();
   wireLightbox();
+  wireShare();
   openFromUrl();
+  installApp();
 }
 
 /* --------------------------------------------------------------- timeline */
@@ -177,10 +180,7 @@ function renderMap() {
   }
 
   state.map = L.map(el.map, { scrollWheelZoom: false });
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19,
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-  }).addTo(state.map);
+  L.tileLayer(OSM_TILES, OSM_OPTIONS).addTo(state.map);
 
   const layer = typeof L.markerClusterGroup === "function" ? L.markerClusterGroup() : L.layerGroup();
   for (const photo of located) {
@@ -205,7 +205,7 @@ function popup(photo) {
 
   const caption = document.createElement("div");
   caption.className = "popup-caption";
-  caption.textContent = [photo.place, formatDate(photo.takenAt)].filter(Boolean).join(" · ");
+  caption.textContent = photoCaption(photo);
 
   container.append(image, caption);
   return container;
@@ -286,6 +286,8 @@ function hidePhoto() {
   if (el.lightbox.hidden) return;
   el.lightbox.hidden = true;
   el.lightboxImage.removeAttribute("src");
+  hideToast(); // or the next photo opened would carry the last one's news
+  forgetPreparedPhoto(); // a photo's worth of memory, held for a photo nobody is looking at
   document.body.style.overflow = "";
   // Locking the body's scroll can lose the timeline's place; put it back. The
   // entry knows it when we arrive by going back; the field covers arriving any
@@ -299,8 +301,8 @@ function showPhoto(index) {
   el.lightboxImage.src = photo.web;
   el.lightboxImage.alt = altFor(photo);
 
-  const date = formatDate(photo.takenAt);
-  el.lightboxCaption.textContent = [photo.place, date].filter(Boolean).join(" · ");
+  prepareToSend(photo); // before anybody can tap the button — see prepareToSend
+  el.lightboxCaption.textContent = photoCaption(photo);
   if (photo.dateFallback) {
     const note = document.createElement("span");
     note.className = "approximate";
@@ -318,6 +320,102 @@ function showPhoto(index) {
     document.body.style.overflow = "hidden";
   }
 }
+
+/* ------------------------------------------------------------------ sharing */
+
+/*
+ * Sending one photo to the family.
+ *
+ * Every photo has had an address of its own for a while, but the only way to
+ * pass one on was to copy it out of the address bar — which on a phone is a
+ * thing nobody does, and which is why photos were being re-sent from the camera
+ * roll instead. This is that tap. What it tries first is the photo itself rather
+ * than the link: a photo sent into a chat is looked at where it lands, by
+ * somebody who may never follow a link.
+ *
+ * The deciding is in share-photo.js, where it is tested. Here is only what this
+ * particular browser can do.
+ */
+
+let clearToast = null;
+
+/** A line that says itself and goes away: the phone's own sheet cannot say this. */
+function flash(message) {
+  el.toast.textContent = message;
+  el.toast.hidden = false;
+  clearTimeout(clearToast);
+  clearToast = setTimeout(hideToast, 2600);
+}
+
+function hideToast() {
+  clearTimeout(clearToast);
+  el.toast.hidden = true;
+}
+
+/** The photo as a file, for a phone that will carry one into a chat. */
+async function photoFile(photo) {
+  const response = await fetch(photo.web);
+  if (!response.ok) throw new Error(response.status);
+
+  const image = await response.blob();
+  return new File([image], shareFileName(photo), { type: image.type || "image/jpeg" });
+}
+
+/**
+ * The open photo as a file, fetched while it is being looked at rather than when
+ * the button is tapped.
+ *
+ * A share sheet may only be opened by a tap, and iOS stops counting one as a tap
+ * the moment anything has been awaited — so fetching the photo first would cost
+ * the sheet, and the photo would go as a link on the very phones this was
+ * written for. Fetching it early costs nothing: these are the same bytes the
+ * lightbox is loading anyway, so it is the browser's own cache that answers.
+ *
+ * A tap that beats the fetch shares the link, which is what a tap would have
+ * done anyway.
+ */
+let ready = { hash: null, file: null };
+
+function prepareToSend(photo) {
+  ready = { hash: photo.hash, file: null };
+  photoFile(photo)
+    .then((file) => {
+      if (ready.hash === photo.hash) ready.file = file;
+    })
+    .catch(() => {}); // no file, so the link goes instead
+}
+
+function forgetPreparedPhoto() {
+  ready = { hash: null, file: null };
+}
+
+async function sendOpenPhoto() {
+  const photo = state.photos[state.index];
+  if (!photo) return;
+
+  const outcome = await sharePhoto(photo, {
+    url: new URL(urlForPhoto(photo.hash, location.href), location.href).href,
+    title: state.config.title,
+    share: navigator.share?.bind(navigator),
+    canShare: navigator.canShare?.bind(navigator),
+    file: ready.hash === photo.hash ? ready.file : null,
+    copy: navigator.clipboard?.writeText.bind(navigator.clipboard),
+  });
+
+  // A sheet that opened says what it did itself, and one that was dismissed was
+  // dismissed on purpose. Only the quiet outcomes are worth a word.
+  if (outcome === COPIED) flash(t("gallery.share.copied"));
+  else if (outcome === FAILED || outcome === UNAVAILABLE) flash(t("gallery.share.failed"));
+}
+
+function wireShare() {
+  // Hidden where the browser can neither share nor copy: a button that cannot
+  // do anything is worse than no button.
+  el.share.hidden = !(navigator.share || navigator.clipboard);
+  el.share.addEventListener("click", sendOpenPhoto);
+}
+
+/* --------------------------------------------------------------- the wiring */
 
 function wireLightbox() {
   window.addEventListener("popstate", onPopState);
