@@ -45,6 +45,46 @@ commits the results, and GitHub Pages serves the result for free.
    on this repository. The token is stored in that browser only — it is never part
    of the published site.
 
+6. **Optional — a passphrase way in**, so a device can be set up when there is no
+   already-set-up device around to show it a QR code.
+
+   Add two repository secrets under Settings → Secrets and variables → Actions:
+
+   | Secret | What to put in it |
+   |---|---|
+   | `UPLOAD_TOKEN` | The same fine-grained token as in step 5. |
+   | `UPLOAD_PASSPHRASE` | **At least four separate words.** The workflow refuses anything less, and padding a short one out does not count — it is the number of words that costs a guessing machine time, not the number of characters. |
+
+   Then run Actions → *Publish the sealed upload token* → *Run workflow*. It
+   commits `sealed-token.json`, the token encrypted under the passphrase. The
+   upload page downloads that and decrypts it in the browser: there is no server,
+   so there is nothing that could check a passphrase for you.
+
+   From then on, a new device only has to open
+   <https://ehhj0525.github.io/upload.html> and type the passphrase into the box
+   that now appears above the token field — a second or so later it is set up,
+   exactly as if the token had been pasted or scanned. Until the workflow has
+   been run there is no such box.
+
+   > **Say this part out loud before you use it.** `sealed-token.json` sits in a
+   > public repository. Anyone can download it and guess at the passphrase
+   > offline — forever, as fast as their hardware goes, with nothing rate-limiting
+   > them and no way for you to notice it happening. Key derivation is made
+   > deliberately expensive (PBKDF2-SHA256, two million iterations) so that each
+   > guess costs something, but that only buys a constant factor. **The passphrase
+   > is the security.** Four words off a real word list is tens of thousands of
+   > GPU-years; a short password of the kind people invent unaided falls in days.
+   >
+   > If it is guessed, what is lost is write access to a public repository that
+   > also serves this site. Bounded, but real — so keep `UPLOAD_TOKEN` scoped to
+   > this one repository, *Contents* only, with the shortest expiry you can live
+   > with, and skip this step entirely if the QR handoff is enough for you.
+
+   **To rotate either secret**: change it in Settings and run the workflow again.
+   No file in the repository names either one, so there is nothing to edit.
+   Devices already set up carry on — each holds its own copy of the token, until
+   that copy is replaced or it expires.
+
 ## Adding photos
 
 Tap **Add** in the gallery's header — or open **`/upload.html`** directly — then
@@ -109,4 +149,6 @@ python3 -m http.server               # then open http://localhost:8000
 | `photo-url.js` | The address of an open photo: `?photo=<hash>`, so links can be shared. |
 | `upload.html`, `upload.js` | The upload page. |
 | `github.js` | Talking to this repository: which repo it is, the token, reading and writing files. |
+| `sealed-token.js` | Locking the upload token under a passphrase, and opening it again. Run by the workflow and by the page, so both agree on the format. |
+| `sealed-token.json` | The locked token, published for step 6 above. Generated — don't edit. Absent until the workflow is run. |
 | `package.json` | Only so Node reads the `.js` files as ES modules when running the tests. No dependencies. |

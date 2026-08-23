@@ -34,13 +34,21 @@
   border-radius: 4px;
 }
 
-#token-form {
+/* The two ways of typing a secret in are the same control doing the same job,
+   so they are the same control. */
+#token-form,
+#passphrase-form {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
 }
 
-#token-form input {
+#passphrase-form {
+  margin-bottom: 12px;
+}
+
+#token-form input,
+#passphrase-form input {
   flex: 1 1 220px;
   min-width: 0;
   padding: 11px 12px;
@@ -57,6 +65,7 @@ button {
 }
 
 #token-form button,
+#passphrase-form button,
 #show-code,
 #hide-code,
 .forget {
@@ -67,6 +76,13 @@ button {
   color: #fff;
   font-size: 0.95rem;
   cursor: pointer;
+}
+
+/* Deriving the key takes a second or so on purpose, and the button says so
+   while it does; it should not still look tappable while it says it. */
+#passphrase-form button:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 #show-code {

@@ -22,6 +22,28 @@
           If a device that can already add photos is to hand, it can show a setup code for this
           one — no token to type. Otherwise, carry on below.
         </p>
+        <!-- Hidden unless a sealed token has actually been published: without
+             one the workflow has never been run, and this would be a door onto
+             nothing. -->
+        <div id="passphrase" hidden>
+          <p>
+            If you know the upload passphrase, that is all this device needs. Unlocking takes a
+            moment — it is made slow deliberately.
+          </p>
+          <form id="passphrase-form">
+            <input
+              id="passphrase-input"
+              type="password"
+              placeholder="Upload passphrase"
+              autocomplete="off"
+              spellcheck="false"
+              required
+            />
+            <button id="passphrase-button" type="submit">Unlock</button>
+          </form>
+          <p>No passphrase? Set this device up with a token of its own instead.</p>
+        </div>
+
         <p>
           This device needs a GitHub token to add photos. Create a
           <strong>fine-grained personal access token</strong> with

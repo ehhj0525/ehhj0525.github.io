@@ -9,6 +9,7 @@
 import { failureHeading, loadFailures } from "./failure-report.js";
 import { createClient, detectRepo, encodeBase64 } from "./github.js";
 import { qrSvg } from "./qr.js";
+import { loadSealedToken, unseal } from "./sealed-token.js";
 import { setupUrl, tokenFromFragment } from "./setup-link.js";
 import { expiryNotice } from "./token-expiry.js";
 import { batchProgress, batchSummary } from "./upload-progress.js";
@@ -29,6 +30,10 @@ const el = {
   tokenInput: document.getElementById("token-input"),
   tokenLink: document.getElementById("token-link"),
   setupError: document.getElementById("setup-error"),
+  passphrase: document.getElementById("passphrase"),
+  passphraseForm: document.getElementById("passphrase-form"),
+  passphraseInput: document.getElementById("passphrase-input"),
+  passphraseButton: document.getElementById("passphrase-button"),
   repoName: document.getElementById("repo-name"),
   expiry: document.getElementById("expiry"),
   expiryText: document.getElementById("expiry-text"),
@@ -202,6 +207,8 @@ function showSetup(message) {
   el.handOff.hidden = true;
   el.setupError.hidden = !message;
   el.setupError.textContent = message ?? "";
+
+  offerPassphrase(); // never rejects, and nothing here waits on it
 }
 
 /**
@@ -220,6 +227,53 @@ async function useStoredToken() {
     github.forgetToken();
     return error.message;
   }
+}
+
+/**
+ * Set this device up from the passphrase — the fourth way a token gets here,
+ * and the only one that does not need the token itself to hand.
+ *
+ * The sealed token is fetched again rather than kept from start-up: rotating it
+ * publishes a new one, and an old copy would refuse a passphrase that is now
+ * the right one.
+ *
+ * Returns the whole sentence to show, or `null` once the device is set up.
+ */
+async function usePassphrase(passphrase) {
+  const sealed = await loadSealedToken();
+  if (!sealed) return "There is no passphrase set up for this site. Use a token below.";
+
+  let token;
+  try {
+    token = await unseal(sealed, passphrase);
+  } catch (error) {
+    // An artefact this page cannot read is not the passphrase's fault, and
+    // saying it was would send someone hunting for the wrong problem.
+    if (error.unreadable) {
+      return (
+        "This page cannot read the published token — this may be an old copy of the page. " +
+        "Reload and try again."
+      );
+    }
+    // Everything else says one thing and nothing more. Anyone can download the
+    // sealed token and guess at it offline for as long as they like, so a
+    // message that let two wrong passphrases be told apart — which word was
+    // right, how close a guess came — would be doing that work for them.
+    return "That passphrase did not work.";
+  }
+
+  github.saveToken(token);
+  const refused = await useStoredToken();
+  return refused && `The passphrase worked, but the token behind it did not: ${refused}`;
+}
+
+/**
+ * Offer the passphrase only where there is a sealed token to open with it.
+ * Until the workflow has been run there is no such file, and a passphrase box
+ * would be a door onto nothing.
+ */
+async function offerPassphrase() {
+  el.passphrase.hidden = !(await loadSealedToken());
 }
 
 /**
@@ -261,6 +315,28 @@ async function start() {
       showSetup(`That token did not work: ${refused}`);
     } else {
       el.tokenInput.value = "";
+    }
+  });
+
+  el.passphraseForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    // Deriving the key is slow on purpose — a second or so on a phone — so the
+    // button has to say it is working. Without that the tap looks ignored, and
+    // the next tap starts a second derivation racing the first.
+    const label = el.passphraseButton.textContent;
+    el.passphraseButton.disabled = true;
+    el.passphraseButton.textContent = "Unlocking…";
+    try {
+      const refused = await usePassphrase(el.passphraseInput.value);
+      if (refused) {
+        showSetup(refused);
+      } else {
+        el.passphraseInput.value = "";
+      }
+    } finally {
+      el.passphraseButton.disabled = false;
+      el.passphraseButton.textContent = label;
     }
   });
 

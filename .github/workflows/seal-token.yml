@@ -1,0 +1,59 @@
+name: Publish the sealed upload token
+
+# Rotation is this workflow and nothing besides: change UPLOAD_TOKEN or
+# UPLOAD_PASSPHRASE under Settings → Secrets and variables → Actions, then run
+# this. No file in the repository names either secret, so nothing here needs
+# editing to rotate — and devices already set up keep the token they saved until
+# it is replaced or it expires.
+#
+# Manual only. Re-sealing on every push would rewrite the artefact for no reason
+# and bury the one event worth being able to point at: the day it was rotated.
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: sealed-token
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      # No dependencies to install — the sealing uses WebCrypto, which Node has,
+      # through the same module the upload page runs.
+      - name: Seal the upload token
+        # Both secrets travel in `env` and are never written into the body of
+        # `run`. Actions prints a run: script to the log before executing it, so
+        # a `${{ secrets.* }}` spelled out inline is a secret typeset into the
+        # log — masked, but pointlessly close to the surface. `set -x` is not
+        # used here for the same reason: it would echo the expanded command.
+        #
+        # `::add-mask::` would add nothing: values from `secrets.*` are
+        # registered for masking already, and the only thing the script prints
+        # is which parameters it sealed with, which is public by design. The
+        # script itself has no path that prints either secret — tested in
+        # tests/js/sealed-token.test.js.
+        env:
+          UPLOAD_TOKEN: ${{ secrets.UPLOAD_TOKEN }}
+          UPLOAD_PASSPHRASE: ${{ secrets.UPLOAD_PASSPHRASE }}
+        run: node .github/scripts/seal-token.js sealed-token.json
+
+      - name: Publish it to the site
+        run: |
+          git config user.name "grace-pipeline"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # This one path and no other. The token only ever lived in the
+          # environment, but a blanket `git add -A` is one stray file away from
+          # committing something that did not.
+          git add sealed-token.json
+          git commit -m "setup: publish the sealed upload token"
+          git push || (git pull --rebase && git push)
