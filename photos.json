@@ -2,6 +2,23 @@
   "generated": "by the Grace pipeline — edit overrides.json, not this file",
   "photos": [
     {
+      "hash": "162c02123f79a8b1",
+      "name": "IMG_0360.jpeg",
+      "web": "web/162c02123f79a8b1.jpg",
+      "thumb": "thumbs/162c02123f79a8b1.jpg",
+      "takenAt": "2026-08-23T07:29:50.631345",
+      "dateFallback": true,
+      "lat": null,
+      "lon": null,
+      "place": null,
+      "uploadedAt": "2026-08-23T07:29:50.631345",
+      "exif": {
+        "takenAt": null,
+        "lat": null,
+        "lon": null
+      }
+    },
+    {
       "hash": "9017b83d64b5ddd2",
       "name": "20260820_101209.jpg",
       "web": "web/9017b83d64b5ddd2.jpg",
@@ -16,6 +33,23 @@
         "takenAt": "2026-08-20T10:12:09",
         "lat": null,
         "lon": null
+      }
+    },
+    {
+      "hash": "7ec3eb1c1aaf05d0",
+      "name": "IMG_0355.jpeg",
+      "web": "web/7ec3eb1c1aaf05d0.jpg",
+      "thumb": "thumbs/7ec3eb1c1aaf05d0.jpg",
+      "takenAt": "2026-08-12T16:41:34",
+      "dateFallback": false,
+      "lat": 53.558494,
+      "lon": 9.794167,
+      "place": "Blankenese, Germany",
+      "uploadedAt": "2026-08-23T07:29:50.631345",
+      "exif": {
+        "takenAt": "2026-08-12T16:41:34",
+        "lat": 53.558494,
+        "lon": 9.794167
       }
     },
     {
@@ -87,6 +121,23 @@
       }
     },
     {
+      "hash": "45d95d4f9a514ec6",
+      "name": "IMG_0303.jpeg",
+      "web": "web/45d95d4f9a514ec6.jpg",
+      "thumb": "thumbs/45d95d4f9a514ec6.jpg",
+      "takenAt": "2026-06-12T07:52:45",
+      "dateFallback": false,
+      "lat": 53.564083,
+      "lon": 9.918272,
+      "place": "Bahrenfeld, Germany",
+      "uploadedAt": "2026-08-23T07:29:50.631345",
+      "exif": {
+        "takenAt": "2026-06-12T07:52:45",
+        "lat": 53.564083,
+        "lon": 9.918272
+      }
+    },
+    {
       "hash": "01a7b8596d7b23fe",
       "name": "20260603_173851.jpg",
       "web": "web/01a7b8596d7b23fe.jpg",
@@ -150,6 +201,40 @@
       "uploadedAt": "2026-08-23T07:24:32.278770",
       "exif": {
         "takenAt": "2026-04-30T15:03:59",
+        "lat": null,
+        "lon": null
+      }
+    },
+    {
+      "hash": "6e8dc63fcfc1ce65",
+      "name": "IMG_0023.jpeg",
+      "web": "web/6e8dc63fcfc1ce65.jpg",
+      "thumb": "thumbs/6e8dc63fcfc1ce65.jpg",
+      "takenAt": "2025-03-27T10:53:41",
+      "dateFallback": false,
+      "lat": null,
+      "lon": null,
+      "place": null,
+      "uploadedAt": "2026-08-23T07:29:50.631345",
+      "exif": {
+        "takenAt": "2025-03-27T10:53:41",
+        "lat": null,
+        "lon": null
+      }
+    },
+    {
+      "hash": "047f213709e584e5",
+      "name": "IMG_0025.jpeg",
+      "web": "web/047f213709e584e5.jpg",
+      "thumb": "thumbs/047f213709e584e5.jpg",
+      "takenAt": "2025-02-08T15:51:59",
+      "dateFallback": false,
+      "lat": null,
+      "lon": null,
+      "place": null,
+      "uploadedAt": "2026-08-23T07:29:50.631345",
+      "exif": {
+        "takenAt": "2025-02-08T15:51:59",
         "lat": null,
         "lon": null
       }
