@@ -92,9 +92,10 @@ Delete its file from `web/` in the GitHub UI. The next build drops it from
 ## Working on the site
 
 ```bash
-uv run pytest              # the pipeline's tests
-uv run grace-pipeline .    # process photos/ locally, exactly as CI does
-python3 -m http.server     # then open http://localhost:8000
+uv run pytest                        # the pipeline's tests
+node --test 'tests/js/**/*.test.js'  # the browser side's tests (no npm install — Node's own runner)
+uv run grace-pipeline .              # process photos/ locally, exactly as CI does
+python3 -m http.server               # then open http://localhost:8000
 ```
 
 | File | What it is |
@@ -105,3 +106,5 @@ python3 -m http.server     # then open http://localhost:8000
 | `src/grace_pipeline/` | The pipeline: EXIF → manifest, HEIC → web JPEG. |
 | `index.html`, `app.js` | The gallery. |
 | `upload.html`, `upload.js` | The upload page. |
+| `github.js` | Talking to this repository: which repo it is, the token, reading and writing files. |
+| `package.json` | Only so Node reads the `.js` files as ES modules when running the tests. No dependencies. |

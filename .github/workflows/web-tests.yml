@@ -1,0 +1,36 @@
+name: Web tests
+
+# The gallery pipeline guards the Python side; this guards the browser side.
+# The upload page can only be exercised by hand, so the GitHub client it stands
+# on is tested here instead.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "*.js"
+      - "tests/js/**"
+      - "package.json"
+      - ".github/workflows/web-tests.yml"
+  # Repeated rather than shared: Actions does not support YAML anchors, and
+  # without it every photo-only pull request would boot Node for nothing.
+  pull_request:
+    paths:
+      - "*.js"
+      - "tests/js/**"
+      - "package.json"
+      - ".github/workflows/web-tests.yml"
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      # No dependencies to install — the tests use Node's own runner.
+      - run: node --test 'tests/js/**/*.test.js'

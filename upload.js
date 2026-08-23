@@ -2,12 +2,14 @@
  * The upload page: pick photos on a phone, commit them straight into photos/
  * via the GitHub Contents API. The pipeline does the rest on the next push.
  *
- * The token lives only in this browser's localStorage — it is never part of the
- * published site.
+ * Everything about talking to GitHub — the repository, the token, the commits —
+ * lives in github.js; this file is only the page around it.
  */
 
-const TOKEN_KEY = "grace.githubToken";
+import { createClient, detectRepo, encodeBase64 } from "./github.js";
+
 const MAX_BYTES = 40 * 1024 * 1024; // the Contents API gets unhappy well before this
+const NAME_ATTEMPTS = 5; // how many numbered variants to try before giving up on a filename
 
 // Several browsers report an empty type for .heic — the iPhone default — so the
 // filename has to be trusted when the MIME type says nothing.
@@ -31,96 +33,7 @@ const el = {
   forget: document.getElementById("forget"),
 };
 
-let repo = { owner: "", name: "", branch: "main" };
-
-/**
- * Work out which repository this page is served from, so the page needs no
- * hand-editing after deployment. config.json wins if it says otherwise.
- */
-async function resolveRepo() {
-  const [owner] = location.hostname.split(".");
-  const [firstSegment] = location.pathname.split("/").filter(Boolean);
-  const isProjectPage = firstSegment && !firstSegment.endsWith(".html");
-
-  const detected = {
-    owner,
-    name: isProjectPage ? firstSegment : `${owner}.github.io`,
-    branch: "main",
-  };
-
-  try {
-    const response = await fetch("config.json", { cache: "no-store" });
-    if (response.ok) {
-      const config = await response.json();
-      return { ...detected, ...(config.repo ?? {}) };
-    }
-  } catch {
-    /* the detected values are good enough */
-  }
-  return detected;
-}
-
-/* ------------------------------------------------------------ GitHub API */
-
-async function github(path, options = {}) {
-  const response = await fetch(`https://api.github.com${path}`, {
-    ...options,
-    headers: {
-      Accept: "application/vnd.github+json",
-      Authorization: `Bearer ${localStorage.getItem(TOKEN_KEY)}`,
-      "X-GitHub-Api-Version": "2022-11-28",
-      ...(options.headers ?? {}),
-    },
-  });
-  if (!response.ok) {
-    const detail = await response.json().catch(() => ({}));
-    const error = new Error(detail.message || `GitHub returned ${response.status}`);
-    error.status = response.status;
-    throw error;
-  }
-  return response.json();
-}
-
-/**
- * Check the token before accepting it, and say something useful when it fails.
- *
- * GitHub answers "Not Found" — not "Forbidden" — when a fine-grained token is
- * valid but not scoped to this repository, so the raw message sends people
- * hunting for the wrong problem.
- */
-async function checkToken() {
-  let user;
-  try {
-    user = await github("/user");
-  } catch (error) {
-    if (error.status === 401) throw new Error("this token is invalid, or it has expired");
-    throw error;
-  }
-
-  try {
-    await github(`/repos/${repo.owner}/${repo.name}`);
-  } catch (error) {
-    if (error.status !== 404) throw error;
-    throw new Error(
-      user.login.toLowerCase() === repo.owner.toLowerCase()
-        ? `this token is owned by ${user.login} but cannot see ${repo.owner}/${repo.name}. ` +
-          `Edit the token and make sure "Repository access" includes ${repo.name}.`
-        : `this token belongs to ${user.login}, but this site lives in ${repo.owner}'s account. ` +
-          `Create the token while signed in as ${repo.owner}, with ${repo.owner}/${repo.name} selected.`
-    );
-  }
-  return user;
-}
-
-async function toBase64(file) {
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  let binary = "";
-  const chunkSize = 0x8000; // String.fromCharCode has an argument-count limit
-  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
-    binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
-  }
-  return btoa(binary);
-}
+let github;
 
 /**
  * Commit one photo. Two uploads before the pipeline runs can collide on a
@@ -132,23 +45,13 @@ async function commitPhoto(file, content) {
   const stem = dot > 0 ? safeName.slice(0, dot) : safeName;
   const extension = dot > 0 ? safeName.slice(dot) : "";
 
-  for (let attempt = 0; attempt < 5; attempt += 1) {
+  for (let attempt = 0; attempt < NAME_ATTEMPTS; attempt += 1) {
     const name = attempt === 0 ? safeName : `${stem}-${attempt}${extension}`;
     try {
-      return await github(`/repos/${repo.owner}/${repo.name}/contents/photos/${encodeURIComponent(name)}`, {
-        method: "PUT",
-        body: JSON.stringify({
-          message: `photo: add ${name}`,
-          content,
-          branch: repo.branch,
-        }),
-      });
+      return await github.createFile(`photos/${name}`, { content, message: `photo: add ${name}` });
     } catch (error) {
-      if (error.status === 403) {
-        throw new Error('token cannot write here — it needs "Contents: Read and write"');
-      }
       const nameTaken = error.status === 422 || error.status === 409;
-      if (!nameTaken || attempt === 4) throw error;
+      if (!nameTaken || attempt === NAME_ATTEMPTS - 1) throw error;
     }
   }
 }
@@ -200,7 +103,7 @@ async function upload(files) {
       if (!looksLikePhoto(file)) throw new Error("not a photo");
       if (file.size > MAX_BYTES) throw new Error("too large to upload");
       row.set("uploading…");
-      await commitPhoto(file, await toBase64(file));
+      await commitPhoto(file, encodeBase64(await file.arrayBuffer()));
       row.set("added", "done");
       succeeded += 1;
     } catch (error) {
@@ -216,7 +119,7 @@ async function upload(files) {
 function showPicker() {
   el.setup.hidden = true;
   el.picker.hidden = false;
-  el.actionsLink.href = `https://github.com/${repo.owner}/${repo.name}/actions`;
+  el.actionsLink.href = `https://github.com/${github.repo.owner}/${github.repo.name}/actions`;
 }
 
 function showSetup(message) {
@@ -227,16 +130,16 @@ function showSetup(message) {
 }
 
 async function start() {
-  repo = await resolveRepo();
-  el.repoName.textContent = `${repo.owner}/${repo.name}`;
+  github = createClient(await detectRepo());
+  el.repoName.textContent = `${github.repo.owner}/${github.repo.name}`;
   el.tokenLink.href = "https://github.com/settings/personal-access-tokens/new";
 
-  if (localStorage.getItem(TOKEN_KEY)) {
+  if (github.hasToken()) {
     try {
-      await checkToken();
+      await github.verifyToken();
       showPicker();
     } catch (error) {
-      localStorage.removeItem(TOKEN_KEY);
+      github.forgetToken();
       showSetup(`That saved token no longer works (${error.message}). Please add a new one.`);
     }
   } else {
@@ -245,19 +148,19 @@ async function start() {
 
   el.tokenForm.addEventListener("submit", async (event) => {
     event.preventDefault();
-    localStorage.setItem(TOKEN_KEY, el.tokenInput.value.trim());
+    github.saveToken(el.tokenInput.value);
     try {
-      await checkToken();
+      await github.verifyToken();
       el.tokenInput.value = "";
       showPicker();
     } catch (error) {
-      localStorage.removeItem(TOKEN_KEY);
+      github.forgetToken();
       showSetup(`That token did not work: ${error.message}`);
     }
   });
 
   el.forget.addEventListener("click", () => {
-    localStorage.removeItem(TOKEN_KEY);
+    github.forgetToken();
     showSetup("Token removed from this device.");
   });
 
