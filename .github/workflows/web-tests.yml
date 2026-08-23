@@ -8,6 +8,9 @@ on:
     branches: [main]
     paths:
       - "*.js"
+      # The tests read the pages too: every key the markup names has to be a
+      # sentence the language tables actually have.
+      - "*.html"
       - "tests/js/**"
       - ".github/scripts/**"
       - "package.json"
@@ -17,6 +20,9 @@ on:
   pull_request:
     paths:
       - "*.js"
+      # The tests read the pages too: every key the markup names has to be a
+      # sentence the language tables actually have.
+      - "*.html"
       - "tests/js/**"
       - ".github/scripts/**"
       - "package.json"

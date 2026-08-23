@@ -10,6 +10,9 @@
  * published site.
  */
 
+import { loadConfig } from "./config.js";
+import { t } from "./language.js";
+
 const TOKEN_KEY = "grace.githubToken";
 const API_ROOT = "https://api.github.com";
 
@@ -21,9 +24,11 @@ const WRITE_ATTEMPTS = 3;
 
 /**
  * Work out which repository this page is served from, so no page needs
- * hand-editing after deployment. config.json wins if it says otherwise.
+ * hand-editing after deployment. config.json wins if it says otherwise, and a
+ * page that has read the settings already can hand them over rather than have
+ * them fetched a second time.
  */
-export async function detectRepo() {
+export async function detectRepo(config) {
   const [owner] = location.hostname.split(".");
   const [firstSegment] = location.pathname.split("/").filter(Boolean);
   const isProjectPage = firstSegment && !firstSegment.endsWith(".html");
@@ -34,16 +39,8 @@ export async function detectRepo() {
     branch: "main",
   };
 
-  try {
-    const response = await fetch("config.json", { cache: "no-store" });
-    if (response.ok) {
-      const config = await response.json();
-      return { ...detected, ...(config.repo ?? {}) };
-    }
-  } catch {
-    /* the detected values are good enough */
-  }
-  return detected;
+  const settings = config ?? (await loadConfig());
+  return { ...detected, ...(settings.repo ?? {}) };
 }
 
 /* --------------------------------------------------------------- encoding */
@@ -118,7 +115,7 @@ export function createClient(repo) {
     expiresAt = parseExpiry(response.headers.get(EXPIRY_HEADER));
     if (!response.ok) {
       const detail = await response.json().catch(() => ({}));
-      const error = new Error(detail.message || `GitHub returned ${response.status}`);
+      const error = new Error(detail.message || t("github.status", { status: response.status }));
       error.status = response.status;
       throw error;
     }
@@ -137,7 +134,7 @@ export function createClient(repo) {
     try {
       user = await request("/user");
     } catch (error) {
-      if (error.status === 401) throw new Error("this token is invalid, or it has expired");
+      if (error.status === 401) throw new Error(t("github.tokenInvalid"));
       throw error;
     }
 
@@ -145,12 +142,11 @@ export function createClient(repo) {
       await request(`/repos/${repo.owner}/${repo.name}`);
     } catch (error) {
       if (error.status !== 404) throw error;
+      const named = { login: user.login, owner: repo.owner, name: repo.name };
       throw new Error(
         user.login.toLowerCase() === repo.owner.toLowerCase()
-          ? `this token is owned by ${user.login} but cannot see ${repo.owner}/${repo.name}. ` +
-            `Edit the token and make sure "Repository access" includes ${repo.name}.`
-          : `this token belongs to ${user.login}, but this site lives in ${repo.owner}'s account. ` +
-            `Create the token while signed in as ${repo.owner}, with ${repo.owner}/${repo.name} selected.`
+          ? t("github.repoUnseen", named)
+          : t("github.wrongAccount", named)
       );
     }
     return user;
@@ -184,7 +180,7 @@ export function createClient(repo) {
       });
     } catch (error) {
       if (error.status === 403) {
-        const refused = new Error('token cannot write here — it needs "Contents: Read and write"');
+        const refused = new Error(t("github.cannotWrite"));
         refused.status = 403;
         throw refused;
       }

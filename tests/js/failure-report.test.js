@@ -6,9 +6,10 @@
  */
 
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { afterEach, beforeEach, describe, it } from "node:test";
 
 import { failureHeading, loadFailures } from "../../failure-report.js";
+import { DEFAULT_LANGUAGE, useLanguage } from "../../language.js";
 
 /** Node has no DOM, so `fetch` has to be installed rather than assigned. */
 function define(name, value) {
@@ -94,5 +95,15 @@ describe("failureHeading", () => {
 
   it("counts several in the plural", () => {
     assert.equal(failureHeading(3), "3 photos could not be processed");
+  });
+
+  describe("in Korean", () => {
+    beforeEach(() => useLanguage("ko"));
+    afterEach(() => useLanguage(DEFAULT_LANGUAGE));
+
+    it("counts photos with the counter they are counted with, one or many", () => {
+      assert.equal(failureHeading(1), "읽지 못한 사진 1장");
+      assert.equal(failureHeading(3), "읽지 못한 사진 3장");
+    });
   });
 });

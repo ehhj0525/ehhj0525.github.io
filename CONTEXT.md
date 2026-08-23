@@ -25,7 +25,11 @@ The secondary view — a map with pins/clusters of Photos by Location.
 _Avoid_: Location view
 
 **Age badge**:
-A label on a Timeline group ("8 months") derived from the son's birth date and the Photos' Taken-at.
+A label on a Timeline group ("8 months", "8개월") derived from the son's birth date and the Photos' Taken-at.
+
+**Language**:
+The one language the whole site speaks, set in `config.json`. Not a per-visitor choice and not read from the browser: the site is for one family, and it is written in their language. Korean and English, falling back to English.
+_Avoid_: Locale, translation
 
 **Upload**:
 The act of adding new Photos to the GitHub repository, normally from a phone via the Upload page; the site updates from the repository contents with no separate backend.

@@ -5,9 +5,11 @@
  * simply stop working one day. A month's notice is enough to make a new token
  * without ever meeting that day.
  *
- * It lives apart from upload.js so the wording and the counting down can be
- * tested without a browser.
+ * It lives apart from upload.js so the counting down can be tested without a
+ * browser; the wording itself is in language.js.
  */
+
+import { t } from "./language.js";
 
 const DAY = 24 * 60 * 60 * 1000;
 const WARN_WITHIN_DAYS = 30;
@@ -23,6 +25,6 @@ export function expiryNotice(expiresAt, now = new Date()) {
 
   const days = Math.floor((expiresAt - now) / DAY);
   if (days > WARN_WITHIN_DAYS) return null;
-  if (days >= 2) return `This token expires in ${days} days.`;
-  return days === 1 ? "This token expires tomorrow." : "This token expires today.";
+  if (days >= 2) return t("upload.expiry.days", { days });
+  return days === 1 ? t("upload.expiry.tomorrow") : t("upload.expiry.today");
 }

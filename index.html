@@ -25,18 +25,38 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
+    <!-- The sentences are written out in English and swapped for the language
+         config.json names as the page starts; the keys are in language.js. -->
     <header class="site-header">
       <h1 id="site-title">Grace</h1>
-      <a class="link-upload" href="upload.html" aria-label="Add photos">Add</a>
-      <nav class="views" role="tablist" aria-label="View">
-        <button id="tab-timeline" role="tab" aria-selected="true" aria-controls="timeline">Timeline</button>
-        <button id="tab-map" role="tab" aria-selected="false" aria-controls="map">Map</button>
+      <a
+        class="link-upload"
+        href="upload.html"
+        aria-label="Add photos"
+        data-i18n="gallery.add"
+        data-i18n-label="gallery.add.label"
+      >Add</a>
+      <nav class="views" role="tablist" aria-label="View" data-i18n-label="gallery.views">
+        <button
+          id="tab-timeline"
+          role="tab"
+          aria-selected="true"
+          aria-controls="timeline"
+          data-i18n="gallery.timeline"
+        >Timeline</button>
+        <button
+          id="tab-map"
+          role="tab"
+          aria-selected="false"
+          aria-controls="map"
+          data-i18n="gallery.map"
+        >Map</button>
       </nav>
     </header>
 
     <main>
       <section id="timeline" role="tabpanel" aria-labelledby="tab-timeline">
-        <p class="status" id="status">Loading photos…</p>
+        <p class="status" id="status" data-i18n="gallery.loading">Loading photos…</p>
       </section>
       <section id="map-panel" role="tabpanel" aria-labelledby="tab-map" hidden>
         <div id="map"></div>
@@ -44,14 +64,22 @@
       </section>
     </main>
 
-    <div id="lightbox" class="lightbox" hidden role="dialog" aria-modal="true" aria-label="Photo">
-      <button class="lightbox-close" aria-label="Close">&times;</button>
-      <button class="lightbox-nav prev" aria-label="Previous photo">&#8249;</button>
+    <div
+      id="lightbox"
+      class="lightbox"
+      hidden
+      role="dialog"
+      aria-modal="true"
+      aria-label="Photo"
+      data-i18n-label="gallery.photo"
+    >
+      <button class="lightbox-close" aria-label="Close" data-i18n-label="gallery.close">&times;</button>
+      <button class="lightbox-nav prev" aria-label="Previous photo" data-i18n-label="gallery.previous">&#8249;</button>
       <figure>
         <img id="lightbox-image" alt="" />
         <figcaption id="lightbox-caption"></figcaption>
       </figure>
-      <button class="lightbox-nav next" aria-label="Next photo">&#8250;</button>
+      <button class="lightbox-nav next" aria-label="Next photo" data-i18n-label="gallery.next">&#8250;</button>
     </div>
 
     <script

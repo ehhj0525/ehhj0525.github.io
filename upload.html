@@ -10,20 +10,24 @@
     <link rel="stylesheet" href="upload.css" />
   </head>
   <body>
+    <!-- The sentences are written out in English and swapped for the language
+         config.json names as the page starts; the keys are in language.js. The
+         two paragraphs with emphasis in them are built by upload.js instead:
+         another language puts the emphasis somewhere else in the sentence. -->
     <header class="site-header">
-      <h1>Add photos</h1>
+      <h1 data-i18n="upload.title">Add photos</h1>
       <nav class="views">
-        <a class="link-back" href="./">← Gallery</a>
+        <a class="link-back" href="./" data-i18n="upload.toGallery">← Gallery</a>
         <!-- Hidden until this device has a token: fixing a photo is a write to
              the repository, exactly as adding one is. -->
-        <a id="to-fix" href="?fix" hidden>Fix a photo</a>
+        <a id="to-fix" href="?fix" hidden data-i18n="upload.fix.heading">Fix a photo</a>
       </nav>
     </header>
 
     <main class="upload">
       <section id="setup" class="card" hidden>
-        <h2>One-time setup</h2>
-        <p class="note">
+        <h2 data-i18n="upload.setup.heading">One-time setup</h2>
+        <p class="note" data-i18n="upload.setup.note">
           If a device that can already add photos is to hand, it can show a setup code for this
           one — no token to type. Otherwise, carry on below.
         </p>
@@ -31,7 +35,7 @@
              one the workflow has never been run, and this would be a door onto
              nothing. -->
         <div id="passphrase" hidden>
-          <p>
+          <p data-i18n="upload.passphrase.intro">
             If you know the upload passphrase, that is all this device needs. Unlocking takes a
             moment — it is made slow deliberately.
           </p>
@@ -40,30 +44,39 @@
               id="passphrase-input"
               type="password"
               placeholder="Upload passphrase"
+              data-i18n-placeholder="upload.passphrase.placeholder"
               autocomplete="off"
               spellcheck="false"
               required
             />
-            <button id="passphrase-button" type="submit">Unlock</button>
+            <button id="passphrase-button" type="submit" data-i18n="upload.passphrase.unlock">Unlock</button>
           </form>
-          <p>No passphrase? Set this device up with a token of its own instead.</p>
+          <p data-i18n="upload.passphrase.none">
+            No passphrase? Set this device up with a token of its own instead.
+          </p>
         </div>
 
-        <p>
+        <p id="token-intro">
           This device needs a GitHub token to add photos. Create a
           <strong>fine-grained personal access token</strong> with
           <em>Contents: Read and write</em> on the
           <code id="repo-name">gallery</code> repository, then paste it here. It is stored only in this
           browser.
         </p>
-        <p>
+        <p id="token-gotchas">
           Two things catch people out: create it while <strong>signed in as the account that owns
           this site</strong>, and under <em>Repository access</em> choose
           <em>Only select repositories</em> and tick that repository — a token that cannot see it
           fails with a bare “Not Found”.
         </p>
         <p>
-          <a id="token-link" href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">
+          <a
+            id="token-link"
+            href="https://github.com/settings/personal-access-tokens/new"
+            target="_blank"
+            rel="noopener"
+            data-i18n="upload.token.create"
+          >
             Create a token on GitHub →
           </a>
         </p>
@@ -72,11 +85,12 @@
             id="token-input"
             type="password"
             placeholder="github_pat_…"
+            data-i18n-placeholder="upload.token.placeholder"
             autocomplete="off"
             spellcheck="false"
             required
           />
-          <button type="submit">Save token</button>
+          <button type="submit" data-i18n="upload.token.save">Save token</button>
         </form>
         <p id="setup-error" class="error" hidden></p>
       </section>
@@ -85,7 +99,12 @@
         <!-- A notice, not a wall: the token still works while this is showing. -->
         <p id="expiry" class="expiry" role="status" hidden>
           <span id="expiry-text"></span>
-          <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">
+          <a
+            href="https://github.com/settings/personal-access-tokens/new"
+            target="_blank"
+            rel="noopener"
+            data-i18n="upload.expiry.replace"
+          >
             Create a replacement →
           </a>
         </p>
@@ -94,36 +113,40 @@
         <section id="failed" class="failed" role="status" hidden>
           <h2 id="failed-heading"></h2>
           <ul id="failed-list"></ul>
-          <p>
+          <p id="failed-kept">
             They are kept in
-            <a id="failed-link" href="#" target="_blank" rel="noopener">photos/failed/</a> —
-            delete one there and it will drop off this list.
+            <a id="failed-link" href="#" target="_blank" rel="noopener" data-i18n="upload.failed.path"
+              >photos/failed/</a>
+            — delete one there and it will drop off this list.
           </p>
         </section>
         <label class="drop" id="drop">
           <input id="file-input" type="file" accept="image/*" multiple hidden />
           <span class="drop-icon">＋</span>
-          <span class="drop-text">Choose photos</span>
-          <span class="drop-hint">or drag them here</span>
+          <span class="drop-text" data-i18n="upload.choose">Choose photos</span>
+          <span class="drop-hint" data-i18n="upload.drag">or drag them here</span>
         </label>
         <!-- role="status" is announced as it changes, so the count is not sight-only. -->
         <p id="progress" class="progress" role="status" hidden></p>
         <ul id="queue" class="queue"></ul>
         <p id="done-note" class="note" hidden>
           Uploaded. The site rebuilds automatically in a minute or two —
-          <a id="actions-link" href="#" target="_blank" rel="noopener">watch progress</a>.
+          <a id="actions-link" href="#" target="_blank" rel="noopener" data-i18n="upload.done.link"
+            >watch progress</a>.
         </p>
-        <button id="show-code" type="button">Set up another device</button>
-        <button id="forget" class="forget" type="button">Forget token on this device</button>
+        <button id="show-code" type="button" data-i18n="upload.handoff.heading">Set up another device</button>
+        <button id="forget" class="forget" type="button" data-i18n="upload.token.forget">
+          Forget token on this device
+        </button>
       </section>
 
       <!-- The page's third state, at ?fix, in place of the picker rather than
            under it: a list of photos to scroll is a second job, and the queue
            is the one that must not be disturbed. -->
       <section id="fix" class="card" hidden>
-        <a id="fix-back" class="link-back" href="?">← Adding photos</a>
-        <h2>Fix a photo</h2>
-        <p>
+        <a id="fix-back" class="link-back" href="?" data-i18n="upload.fix.back">← Adding photos</a>
+        <h2 data-i18n="upload.fix.heading">Fix a photo</h2>
+        <p data-i18n="upload.fix.intro">
           A photo that arrived with its metadata stripped lands on the day it was uploaded, with
           no place. Fill in what it should say and the next build moves it — on the timeline and
           on the map. Empty a field to go back to whatever the photo itself says.
@@ -132,30 +155,40 @@
         <!-- Shut by default: naming a place is the rarer job, and open it would
              put a form between someone and the photo they came here to fix. -->
         <details id="place">
-          <summary>Name a place</summary>
-          <p>
+          <summary data-i18n="upload.place.heading">Name a place</summary>
+          <p data-i18n="upload.place.intro">
             Every photo taken within the radius is labelled with this name instead of whatever
             OpenStreetMap calls it — including the ones already published.
           </p>
           <form id="place-form">
+            <!-- The label's words are in a span of their own: the input is the
+                 label's other child, and swapping the text of the label itself
+                 would take the input with it. -->
             <label>
-              Name
-              <input id="place-name" type="text" placeholder="할머니집" spellcheck="false" required />
+              <span data-i18n="upload.field.name">Name</span>
+              <input
+                id="place-name"
+                type="text"
+                placeholder="Grandma's house"
+                data-i18n-placeholder="upload.place.namePlaceholder"
+                spellcheck="false"
+                required
+              />
             </label>
             <label>
-              Latitude
+              <span data-i18n="upload.field.lat">Latitude</span>
               <input id="place-lat" type="text" placeholder="37.4500" spellcheck="false" required />
             </label>
             <label>
-              Longitude
+              <span data-i18n="upload.field.lon">Longitude</span>
               <input id="place-lon" type="text" placeholder="127.1300" spellcheck="false" required />
             </label>
             <label>
-              Radius in metres
+              <span data-i18n="upload.place.radius">Radius in metres</span>
               <!-- The hint is the pipeline's own default, filled in by upload.js. -->
               <input id="place-radius" type="text" spellcheck="false" />
             </label>
-            <button id="place-save" type="submit">Add place</button>
+            <button id="place-save" type="submit" data-i18n="upload.place.add">Add place</button>
             <span id="place-state" class="state" role="status"></span>
           </form>
           <p id="place-named" class="note"></p>
@@ -163,7 +196,7 @@
 
         <ul id="fix-list" class="fix-list"></ul>
         <p id="fix-state" class="state" role="status"></p>
-        <p class="note">
+        <p class="note" data-i18n="upload.fix.note">
           These are the photos added most recently, in timeline order. One added a moment ago is
           not here yet: it appears once the site has rebuilt, which is what reads the photo and
           gives it a name here.
@@ -173,14 +206,16 @@
       <!-- Never on screen unless asked for: while it is showing, a photograph
            of it is as good as the token itself. -->
       <section id="hand-off" class="card" hidden>
-        <h2>Set up another device</h2>
-        <p class="warning">
+        <h2 data-i18n="upload.handoff.heading">Set up another device</h2>
+        <p class="warning" data-i18n="upload.handoff.warning">
           Anyone who photographs this code can add photos to the gallery for as long as this
           token lasts. Show it to the other phone and close it again.
         </p>
         <div id="setup-code" class="setup-code"></div>
-        <p>Point the other phone's camera at it — there is nothing to type.</p>
-        <button id="hide-code" type="button">Done</button>
+        <p data-i18n="upload.handoff.point">
+          Point the other phone's camera at it — there is nothing to type.
+        </p>
+        <button id="hide-code" type="button" data-i18n="upload.handoff.done">Done</button>
       </section>
     </main>
 

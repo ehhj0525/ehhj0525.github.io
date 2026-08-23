@@ -3,11 +3,15 @@
  * a month-by-month timeline, and a map of where the photos were taken.
  */
 
+import { loadConfig } from "./config.js";
+import { ageLabel, formatDate, monthHeading } from "./dates.js";
+import { t, useLanguage } from "./language.js";
 import { indexOfPhoto, photoIdFromUrl, urlForPhoto, urlWithoutPhoto } from "./photo-url.js";
+import { translatePage } from "./translate-page.js";
 
 const state = {
   photos: [], // newest first — the order the lightbox steps through
-  config: { title: "Grace", birthDate: null },
+  config: {}, // config.json, once it has been read — see config.js for the defaults
   index: 0,
   map: null,
   scrollY: 0, // where the timeline was when the open photo was opened from it
@@ -29,27 +33,29 @@ const el = {
 
 /* ---------------------------------------------------------------- loading */
 
-async function loadJson(path, fallback) {
+/** Every photo the last build knew about, or none at all if it cannot be read. */
+async function loadManifest() {
   try {
     // GitHub Pages caches aggressively; a fresh upload should show up immediately.
-    const response = await fetch(`${path}?t=${Date.now()}`, { cache: "no-store" });
+    const response = await fetch(`photos.json?t=${Date.now()}`, { cache: "no-store" });
     if (!response.ok) throw new Error(response.status);
     return await response.json();
   } catch {
-    return fallback;
+    return { photos: [] };
   }
 }
 
 async function start() {
-  const [config, manifest] = await Promise.all([
-    loadJson("config.json", {}),
-    loadJson("photos.json", { photos: [] }),
-  ]);
+  const [config, manifest] = await Promise.all([loadConfig(), loadManifest()]);
 
-  state.config = { ...state.config, ...config };
+  state.config = config;
   state.photos = manifest.photos ?? [];
   document.title = state.config.title;
   el.title.textContent = state.config.title;
+
+  // Before anything is drawn: everything below reads the language as it writes.
+  useLanguage(state.config.language);
+  translatePage();
 
   renderTimeline();
   wireTabs();
@@ -61,7 +67,7 @@ async function start() {
 
 function renderTimeline() {
   if (state.photos.length === 0) {
-    el.status.textContent = "No photos yet. Add some from the upload page and they will appear here.";
+    el.status.textContent = t("gallery.empty");
     return;
   }
   el.status.remove();
@@ -91,11 +97,7 @@ function monthSection(month, photos) {
   header.className = "month-header";
 
   const heading = document.createElement("h2");
-  const [year, monthNumber] = month.split("-").map(Number);
-  heading.textContent = new Date(year, monthNumber - 1).toLocaleDateString(undefined, {
-    month: "long",
-    year: "numeric",
-  });
+  heading.textContent = monthHeading(month);
   header.append(heading);
 
   const age = ageLabel(state.config.birthDate, `${month}-15`);
@@ -114,6 +116,9 @@ function monthSection(month, photos) {
   return section;
 }
 
+/** What a screen reader is given instead of the photo, said once for both views. */
+const altFor = (photo) => (photo.place ? t("gallery.photoIn", { place: photo.place }) : t("gallery.photo"));
+
 function tile(photo) {
   const button = document.createElement("button");
   button.className = "tile";
@@ -121,7 +126,7 @@ function tile(photo) {
 
   const image = document.createElement("img");
   image.src = photo.thumb;
-  image.alt = photo.place ? `Photo taken in ${photo.place}` : "Photo";
+  image.alt = altFor(photo);
   image.loading = "lazy";
   image.decoding = "async";
   image.addEventListener("load", () => image.classList.add("loaded"));
@@ -137,28 +142,6 @@ function tile(photo) {
 
   button.addEventListener("click", () => openPhoto(state.photos.indexOf(photo)));
   return button;
-}
-
-/**
- * "3 months", "1 year 2 months" — how old he was when the photo was taken.
- * Returns null for photos from before he was born, and when no birth date is set.
- */
-function ageLabel(birthDate, when) {
-  if (!birthDate) return null;
-  const birth = new Date(birthDate);
-  const date = new Date(when);
-  if (Number.isNaN(birth.getTime()) || Number.isNaN(date.getTime())) return null;
-
-  let months = (date.getFullYear() - birth.getFullYear()) * 12 + (date.getMonth() - birth.getMonth());
-  if (date.getDate() < birth.getDate()) months -= 1;
-  if (months < 0) return null;
-  if (months === 0) return "newborn";
-  if (months < 24) return `${months} month${months === 1 ? "" : "s"}`;
-
-  const years = Math.floor(months / 12);
-  const remainder = months % 12;
-  const yearPart = `${years} year${years === 1 ? "" : "s"}`;
-  return remainder === 0 ? yearPart : `${yearPart} ${remainder} month${remainder === 1 ? "" : "s"}`;
 }
 
 /* -------------------------------------------------------------------- map */
@@ -183,13 +166,13 @@ function renderMap() {
     return;
   }
   if (typeof L === "undefined") {
-    el.map.textContent = "The map could not be loaded.";
+    el.map.textContent = t("gallery.map.unavailable");
     return;
   }
 
   const located = state.photos.filter((photo) => photo.lat != null && photo.lon != null);
   if (located.length === 0) {
-    el.map.textContent = "None of the photos have location information yet.";
+    el.map.textContent = t("gallery.map.none");
     return;
   }
 
@@ -208,9 +191,7 @@ function renderMap() {
 
   const missing = state.photos.length - located.length;
   if (missing > 0) {
-    el.mapNote.textContent = `${missing} photo${missing === 1 ? "" : "s"} without location ${
-      missing === 1 ? "is" : "are"
-    } on the timeline only.`;
+    el.mapNote.textContent = t("gallery.map.missing", { count: missing });
     el.mapNote.hidden = false;
   }
 }
@@ -316,14 +297,14 @@ function showPhoto(index) {
   state.index = index;
   const photo = state.photos[index];
   el.lightboxImage.src = photo.web;
-  el.lightboxImage.alt = photo.place ? `Photo taken in ${photo.place}` : "Photo";
+  el.lightboxImage.alt = altFor(photo);
 
   const date = formatDate(photo.takenAt);
   el.lightboxCaption.textContent = [photo.place, date].filter(Boolean).join(" · ");
   if (photo.dateFallback) {
     const note = document.createElement("span");
     note.className = "approximate";
-    note.textContent = " (date approximate)";
+    note.textContent = t("gallery.approximate");
     el.lightboxCaption.append(note);
   }
 
@@ -336,13 +317,6 @@ function showPhoto(index) {
     el.lightbox.hidden = false;
     document.body.style.overflow = "hidden";
   }
-}
-
-function formatDate(iso) {
-  const date = new Date(iso);
-  return Number.isNaN(date.getTime())
-    ? ""
-    : date.toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" });
 }
 
 function wireLightbox() {

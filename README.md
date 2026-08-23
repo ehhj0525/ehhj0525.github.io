@@ -33,11 +33,17 @@ commits the results, and GitHub Pages serves the result for free.
 3. **Allow the pipeline to commit**: Settings → Actions → General → Workflow
    permissions → *Read and write permissions*.
 
-4. **Set the birth date** in `config.json` so the age badges are right:
+4. **Set the birth date** in `config.json` so the age badges are right, and the
+   language the site should speak:
 
    ```json
-   { "title": "Grace", "birthDate": "2025-06-01" }
+   { "title": "Grace", "birthDate": "2025-06-01", "language": "ko" }
    ```
+
+   `language` is `ko` for Korean or `en` for English, and it changes every word
+   on both pages — the month headings and the age badges included, each written
+   the way that language writes them. Anything else, or nothing at all, and the
+   site is in English.
 
 5. **Create an upload token** (only for the device you upload from): open
    <https://ehhj0525.github.io/upload.html> and follow the one-time setup.
@@ -165,6 +171,9 @@ python3 -m http.server               # then open http://localhost:8000
 | `upload.html`, `upload.js` | The upload page, and the fixing screen at `?fix`. |
 | `corrections.js` | Reading and changing `overrides.json` without hand-editing it: one photo's fields, a named place, merged into whatever the file already says. |
 | `github.js` | Talking to this repository: which repo it is, the token, reading and writing files. |
+| `language.js` | Every word both pages say, in each language they say it in. Change a sentence here, not in the page. |
+| `dates.js` | How the gallery writes a month, a date and an age — each language writes all three differently. |
+| `translate-page.js` | Putting those words into markup that was written in English. |
 | `sealed-token.js` | Locking the upload token under a passphrase, and opening it again. Run by the workflow and by the page, so both agree on the format. |
 | `sealed-token.json` | The locked token, published for step 6 above. Generated — don't edit. Absent until the workflow is run. |
 | `package.json` | Only so Node reads the `.js` files as ES modules when running the tests. No dependencies. |

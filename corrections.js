@@ -12,6 +12,8 @@
  * and re-run against fresh contents when a save collides with another one.
  */
 
+import { t } from "./language.js";
+
 /** The corrections file, at the root of the repository. */
 export const CORRECTIONS_PATH = "overrides.json";
 
@@ -43,7 +45,7 @@ function parse(text) {
   try {
     return JSON.parse(text);
   } catch (error) {
-    throw new Error(`${CORRECTIONS_PATH} is not valid JSON: ${error.message}`);
+    throw new Error(t("corrections.invalidJson", { file: CORRECTIONS_PATH, reason: error.message }));
   }
 }
 
@@ -178,7 +180,7 @@ export function applyCorrection(text, key, fields) {
  */
 export function addPlace(text, place) {
   const name = String(place.name ?? "").trim();
-  if (!name) throw new Error("a place needs a name");
+  if (!name) throw new Error(t("corrections.placeNeedsName"));
 
   const named = {
     name,
@@ -246,7 +248,7 @@ function container(document, name) {
 
   const held = document[name];
   const intact = name === "places" ? Array.isArray(held) : isPlain(held);
-  if (!intact) throw new Error(`${CORRECTIONS_PATH} cannot be edited: "${name}" is not what it should be`);
+  if (!intact) throw new Error(t("corrections.unusable", { file: CORRECTIONS_PATH, container: name }));
   return held;
 }
 
@@ -272,22 +274,28 @@ function photoChanges(fields) {
 
 /* --------------------------------------------------------------- validating */
 
-const LIMITS = { lat: [-90, 90, "latitude"], lon: [-180, 180, "longitude"] };
+// The name of the field is looked up as the complaint is made, not as this is
+// read: the page settles on a language after the modules have loaded.
+const LIMITS = {
+  lat: [-90, 90, "corrections.latitude"],
+  lon: [-180, 180, "corrections.longitude"],
+};
 
-function coordinate(value, field) {
-  const [low, high, name] = LIMITS[field];
-  if (isBlank(value)) throw new Error(`the ${name} must be a number`);
+function coordinate(value, axis) {
+  const [low, high, key] = LIMITS[axis];
+  const field = t(key);
+  if (isBlank(value)) throw new Error(t("corrections.needsNumber", { field }));
 
   const number = Number(value);
-  if (Number.isNaN(number)) throw new Error(`"${value}" is not a number — the ${name} must be a number`);
-  if (number < low || number > high) throw new Error(`the ${name} must be between ${low} and ${high}`);
+  if (Number.isNaN(number)) throw new Error(t("corrections.notANumber", { value, field }));
+  if (number < low || number > high) throw new Error(t("corrections.outOfRange", { field, low, high }));
   return number;
 }
 
 function date(value) {
   const given = String(value).trim();
   if (!ISO_DATE.test(given) || Number.isNaN(Date.parse(given))) {
-    throw new Error(`"${value}" is not a date the pipeline can read — try 2025-12-25T08:00`);
+    throw new Error(t("corrections.notADate", { value }));
   }
   return given;
 }
@@ -296,6 +304,6 @@ function radius(value) {
   if (isBlank(value)) return DEFAULT_RADIUS_M;
 
   const metres = Number(value);
-  if (Number.isNaN(metres) || metres <= 0) throw new Error("the radius must be a number of metres");
+  if (Number.isNaN(metres) || metres <= 0) throw new Error(t("corrections.needsRadius"));
   return metres;
 }

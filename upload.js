@@ -6,6 +6,7 @@
  * lives in github.js; this file is only the page around it.
  */
 
+import { loadConfig } from "./config.js";
 import {
   correctionFor,
   dateIsGuessed,
@@ -20,10 +21,12 @@ import {
 } from "./corrections.js";
 import { failureHeading, loadFailures } from "./failure-report.js";
 import { createClient, detectRepo, encodeBase64 } from "./github.js";
+import { t, useLanguage } from "./language.js";
 import { qrSvg } from "./qr.js";
 import { loadSealedToken, unseal } from "./sealed-token.js";
 import { setupUrl, tokenFromFragment } from "./setup-link.js";
 import { expiryNotice } from "./token-expiry.js";
+import { em, strong, translatePage } from "./translate-page.js";
 import { batchProgress, batchSummary } from "./upload-progress.js";
 
 const MAX_BYTES = 40 * 1024 * 1024; // the Contents API gets unhappy well before this
@@ -46,12 +49,15 @@ const el = {
   passphraseForm: document.getElementById("passphrase-form"),
   passphraseInput: document.getElementById("passphrase-input"),
   passphraseButton: document.getElementById("passphrase-button"),
+  tokenIntro: document.getElementById("token-intro"),
+  tokenGotchas: document.getElementById("token-gotchas"),
   repoName: document.getElementById("repo-name"),
   expiry: document.getElementById("expiry"),
   expiryText: document.getElementById("expiry-text"),
   failed: document.getElementById("failed"),
   failedHeading: document.getElementById("failed-heading"),
   failedList: document.getElementById("failed-list"),
+  failedKept: document.getElementById("failed-kept"),
   failedLink: document.getElementById("failed-link"),
   drop: document.getElementById("drop"),
   fileInput: document.getElementById("file-input"),
@@ -122,7 +128,7 @@ function queueRow(file) {
 
   const state = document.createElement("span");
   state.className = "state";
-  state.textContent = "waiting";
+  state.textContent = t("upload.queue.waiting");
 
   row.append(preview, name, state);
   el.queue.append(row);
@@ -154,11 +160,11 @@ async function upload(files) {
 
   for (const [file, row] of rows) {
     try {
-      if (!looksLikePhoto(file)) throw new Error("not a photo");
-      if (file.size > MAX_BYTES) throw new Error("too large to upload");
-      row.set("uploading…");
+      if (!looksLikePhoto(file)) throw new Error(t("upload.queue.notPhoto"));
+      if (file.size > MAX_BYTES) throw new Error(t("upload.queue.tooLarge"));
+      row.set(t("upload.queue.uploading"));
       await commitPhoto(file, encodeBase64(await file.arrayBuffer()));
-      row.set("added", "done");
+      row.set(t("upload.queue.added"), "done");
       succeeded += 1;
     } catch (error) {
       row.set(error.message, "failed");
@@ -275,23 +281,25 @@ function fixRow(photo) {
   if (dateIsGuessed(photo)) {
     const guessed = document.createElement("span");
     guessed.className = "guessed";
-    guessed.textContent = "date is a guess";
+    guessed.textContent = t("upload.fix.guessed");
     summary.append(guessed);
   }
 
-  const unrecorded = "nothing in the photo";
+  const unrecorded = t("upload.fix.unrecorded");
   // datetime-local is a picker on a phone; where a browser has none it falls
   // back to a text field, and the same ISO text is read out of either.
-  const taken = fixField("Taken", forDateInput(correction.takenAt), { type: "datetime-local" });
-  const lat = fixField("Latitude", correction.lat, { hint: exif.lat ?? unrecorded });
-  const lon = fixField("Longitude", correction.lon, { hint: exif.lon ?? unrecorded });
-  const place = fixField("Place", correction.place, {
-    hint: photo.place ?? "looked up from the location",
+  const taken = fixField(t("upload.fix.taken"), forDateInput(correction.takenAt), {
+    type: "datetime-local",
+  });
+  const lat = fixField(t("upload.field.lat"), correction.lat, { hint: exif.lat ?? unrecorded });
+  const lon = fixField(t("upload.field.lon"), correction.lon, { hint: exif.lon ?? unrecorded });
+  const place = fixField(t("upload.field.place"), correction.place, {
+    hint: photo.place ?? t("upload.fix.placeHint"),
   });
 
   const save = document.createElement("button");
   save.type = "submit";
-  save.textContent = "Save";
+  save.textContent = t("upload.fix.save");
 
   const state = document.createElement("span");
   state.className = "state";
@@ -325,12 +333,12 @@ function report(state, text, outcome) {
 }
 
 async function saveRow(photo, button, state, fields) {
-  report(state, "Saving…");
+  report(state, t("upload.fix.saving"));
   button.disabled = true;
   try {
     const committed = await saveCorrection(github, keyFor(corrections, photo), fields);
     corrections = readCorrections(committed);
-    report(state, "Saved. The next build moves it.", "done");
+    report(state, t("upload.fix.saved"), "done");
   } catch (error) {
     report(state, error.message, "failed");
   } finally {
@@ -342,11 +350,11 @@ async function saveRow(photo, button, state, fields) {
 function showNamedPlaces() {
   const names = corrections.places.map((place) => place.name).filter(Boolean);
   el.placeNamed.hidden = names.length === 0;
-  el.placeNamed.textContent = `Named already: ${names.join(", ")}`;
+  el.placeNamed.textContent = t("upload.place.named", { names: names.join(", ") });
 }
 
 async function addNamedPlace() {
-  report(el.placeState, "Saving…");
+  report(el.placeState, t("upload.fix.saving"));
   el.placeSave.disabled = true;
   try {
     const committed = await savePlace(github, {
@@ -358,7 +366,7 @@ async function addNamedPlace() {
     corrections = readCorrections(committed);
     showNamedPlaces();
     el.placeForm.reset();
-    report(el.placeState, "Added. The next build relabels the photos near it.", "done");
+    report(el.placeState, t("upload.place.added"), "done");
   } catch (error) {
     report(el.placeState, error.message, "failed");
   } finally {
@@ -380,7 +388,7 @@ async function showFix() {
 
   el.fixList.replaceChildren();
   el.fixState.hidden = false;
-  report(el.fixState, "Reading the photos…");
+  report(el.fixState, t("upload.fix.reading"));
 
   let photos;
   try {
@@ -391,13 +399,13 @@ async function showFix() {
     photos = published;
     corrections = current;
   } catch (error) {
-    report(el.fixState, `The corrections could not be read: ${error.message}`, "failed");
+    report(el.fixState, t("upload.fix.unreadable", { reason: error.message }), "failed");
     return;
   }
 
   showNamedPlaces();
   el.fixList.replaceChildren(...photos.map(fixRow));
-  report(el.fixState, photos.length === 0 ? "No photos here yet." : "");
+  report(el.fixState, photos.length === 0 ? t("upload.fix.empty") : "");
   el.fixState.hidden = photos.length > 0;
 }
 
@@ -493,7 +501,7 @@ async function useStoredToken() {
  */
 async function usePassphrase(passphrase) {
   const sealed = await loadSealedToken();
-  if (!sealed) return "There is no passphrase set up for this site. Use a token below.";
+  if (!sealed) return t("upload.passphrase.absent");
 
   let token;
   try {
@@ -501,22 +509,17 @@ async function usePassphrase(passphrase) {
   } catch (error) {
     // An artefact this page cannot read is not the passphrase's fault, and
     // saying it was would send someone hunting for the wrong problem.
-    if (error.unreadable) {
-      return (
-        "This page cannot read the published token — this may be an old copy of the page. " +
-        "Reload and try again."
-      );
-    }
+    if (error.unreadable) return t("upload.passphrase.stale");
     // Everything else says one thing and nothing more. Anyone can download the
     // sealed token and guess at it offline for as long as they like, so a
     // message that let two wrong passphrases be told apart — which word was
     // right, how close a guess came — would be doing that work for them.
-    return "That passphrase did not work.";
+    return t("upload.passphrase.wrong");
   }
 
   github.saveToken(token);
   const refused = await useStoredToken();
-  return refused && `The passphrase worked, but the token behind it did not: ${refused}`;
+  return refused && t("upload.passphrase.tokenRefused", { reason: refused });
 }
 
 /**
@@ -543,19 +546,33 @@ function takeScannedToken() {
 }
 
 async function start() {
-  github = createClient(await detectRepo());
+  const config = await loadConfig();
+  useLanguage(config.language);
+  translatePage();
+  document.title = t("upload.title");
+
+  github = createClient(await detectRepo(config));
   el.repoName.textContent = `${github.repo.owner}/${github.repo.name}`;
   el.tokenLink.href = "https://github.com/settings/personal-access-tokens/new";
   el.placeRadius.placeholder = DEFAULT_RADIUS_M; // the pipeline's own default, said once
+
+  // The four sentences with something other than words in them. Where the
+  // emphasis and the links fall is part of the sentence, so each language hands
+  // back its own order for them rather than having one wrapped around a
+  // translation — in Korean the repository is named before the permission is.
+  el.tokenIntro.replaceChildren(...t("upload.token.intro", { strong, em, repo: el.repoName }));
+  el.tokenGotchas.replaceChildren(...t("upload.token.gotchas", { strong, em }));
+  el.failedKept.replaceChildren(...t("upload.failed.kept", { link: el.failedLink }));
+  el.doneNote.replaceChildren(...t("upload.done", { link: el.actionsLink }));
 
   const scanned = takeScannedToken();
   if (scanned) {
     github.saveToken(scanned);
     const refused = await useStoredToken();
-    if (refused) showSetup(`The code you scanned did not work: ${refused}`);
+    if (refused) showSetup(t("upload.token.scanned", { reason: refused }));
   } else if (github.hasToken()) {
     const refused = await useStoredToken();
-    if (refused) showSetup(`That saved token no longer works (${refused}). Please add a new one.`);
+    if (refused) showSetup(t("upload.token.stale", { reason: refused }));
   } else {
     showSetup();
   }
@@ -565,7 +582,7 @@ async function start() {
     github.saveToken(el.tokenInput.value);
     const refused = await useStoredToken();
     if (refused) {
-      showSetup(`That token did not work: ${refused}`);
+      showSetup(t("upload.token.refused", { reason: refused }));
     } else {
       el.tokenInput.value = "";
     }
@@ -579,7 +596,7 @@ async function start() {
     // the next tap starts a second derivation racing the first.
     const label = el.passphraseButton.textContent;
     el.passphraseButton.disabled = true;
-    el.passphraseButton.textContent = "Unlocking…";
+    el.passphraseButton.textContent = t("upload.passphrase.unlocking");
     try {
       const refused = await usePassphrase(el.passphraseInput.value);
       if (refused) {
@@ -597,7 +614,7 @@ async function start() {
     // Drawn on the way in and thrown away on the way out, so dismissing the
     // code really does take the token off the screen. The markup is the
     // encoder's own — geometry and nothing from anywhere else.
-    el.setupCode.innerHTML = qrSvg(setupUrl(location.href, github.token()), "Setup code");
+    el.setupCode.innerHTML = qrSvg(setupUrl(location.href, github.token()), t("upload.handoff.codeLabel"));
     el.handOff.hidden = false;
     el.handOff.scrollIntoView({ block: "nearest" });
   });
@@ -609,7 +626,7 @@ async function start() {
 
   el.forget.addEventListener("click", () => {
     github.forgetToken();
-    showSetup("Token removed from this device.");
+    showSetup(t("upload.token.forgotten"));
   });
 
   el.toFix.addEventListener("click", (event) => {

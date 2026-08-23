@@ -6,9 +6,11 @@
  * photo simply never appears in the gallery — so this is the only account of it
  * the page can give.
  *
- * It lives apart from upload.js so the reading and the wording can be tested
- * without a browser.
+ * It lives apart from upload.js so the reading can be tested without a browser;
+ * the wording itself is in language.js.
  */
+
+import { t } from "./language.js";
 
 const REPORT = "failed.json";
 
@@ -37,5 +39,4 @@ export async function loadFailures() {
 }
 
 /** The line over the list. */
-export const failureHeading = (count) =>
-  `${count} photo${count === 1 ? "" : "s"} could not be processed`;
+export const failureHeading = (count) => t("upload.failed.heading", { count });

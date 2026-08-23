@@ -5,8 +5,9 @@
  */
 
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { afterEach, beforeEach, describe, it } from "node:test";
 
+import { DEFAULT_LANGUAGE, useLanguage } from "../../language.js";
 import { batchProgress, batchSummary } from "../../upload-progress.js";
 
 describe("batchProgress", () => {
@@ -42,5 +43,24 @@ describe("batchSummary", () => {
 
   it("counts a single added photo in the singular", () => {
     assert.equal(batchSummary(1, 1), "1 photo added, 1 failed.");
+  });
+});
+
+describe("in Korean", () => {
+  beforeEach(() => useLanguage("ko"));
+  afterEach(() => useLanguage(DEFAULT_LANGUAGE));
+
+  it("counts a running batch in 장, which one photo and twelve share", () => {
+    assert.equal(batchProgress(3, 12), "12장 중 3장 완료");
+    assert.equal(batchProgress(0, 1), "1장 중 0장 완료");
+  });
+
+  it("states both numbers when the batch stops", () => {
+    assert.equal(batchSummary(12, 0), "12장 추가, 실패 없음.");
+    assert.equal(batchSummary(10, 2), "10장 추가, 2장 실패.");
+  });
+
+  it("does not claim a photo was added when none was", () => {
+    assert.equal(batchSummary(0, 3), "추가된 사진 없음, 3장 실패.");
   });
 });

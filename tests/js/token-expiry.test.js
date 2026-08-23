@@ -4,8 +4,9 @@
  */
 
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { afterEach, beforeEach, describe, it } from "node:test";
 
+import { DEFAULT_LANGUAGE, useLanguage } from "../../language.js";
 import { expiryNotice } from "../../token-expiry.js";
 
 const NOW = new Date("2026-08-23T09:00:00Z");
@@ -46,5 +47,23 @@ describe("expiryNotice", () => {
 
   it("does not count backwards past an expiry that has already gone", () => {
     assert.equal(expiryNotice(inDays(-3), NOW), "This token expires today.");
+  });
+
+  describe("in Korean", () => {
+    beforeEach(() => useLanguage("ko"));
+    afterEach(() => useLanguage(DEFAULT_LANGUAGE));
+
+    it("counts the days down", () => {
+      assert.equal(expiryNotice(inDays(12), NOW), "이 토큰은 12일 뒤에 만료돼요.");
+    });
+
+    it("names tomorrow and today rather than counting them", () => {
+      assert.equal(expiryNotice(inDays(1), NOW), "이 토큰은 내일 만료돼요.");
+      assert.equal(expiryNotice(inDays(0.2), NOW), "이 토큰은 오늘 만료돼요.");
+    });
+
+    it("still says nothing while the expiry is far off", () => {
+      assert.equal(expiryNotice(inDays(120), NOW), null);
+    });
   });
 });
