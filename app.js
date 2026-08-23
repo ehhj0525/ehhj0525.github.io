@@ -249,7 +249,8 @@ function openPhoto(index) {
   if (!photo) return;
 
   state.scrollY = window.scrollY;
-  // Onto the entry we are about to leave, so coming back lands where we left.
+  // Where the timeline is now, written onto the entry we are about to leave, so
+  // that coming back to it lands where the visitor left off.
   history.replaceState({ ...history.state, scrollY: state.scrollY }, "");
   history.pushState({ photo: photo.hash }, "", urlForPhoto(photo.hash, location.href));
   showPhoto(index);
@@ -274,21 +275,23 @@ function dismissPhoto() {
 }
 
 /**
- * A link straight to a photo. The timeline is given a history entry underneath
- * it first, so back closes the photo rather than leaving the site — even for a
- * visitor who arrived on the link from a chat app.
+ * A link straight to a photo. The entry the link arrived on becomes the
+ * timeline, and the photo is opened on top of it in the ordinary way — so back
+ * closes the photo rather than sending the visitor back to the chat app.
  */
 function openFromUrl() {
   const id = photoIdFromUrl(location.href);
   if (!id) return;
 
-  const index = indexOfPhoto(state.photos, id);
-  history.replaceState({ scrollY: 0 }, "", urlWithoutPhoto(location.href));
-  // A link to a photo that is no longer here just shows the timeline, quietly.
-  if (index < 0) return;
+  // With no manifest there is no telling a deleted photo from one we simply
+  // failed to fetch, and rewriting the address bar would throw away the only
+  // copy of the link the visitor was sent. Leave it be; a reload can retry.
+  if (state.photos.length === 0) return;
 
-  history.pushState({ photo: id }, "", urlForPhoto(id, location.href));
-  showPhoto(index);
+  const index = indexOfPhoto(state.photos, id);
+  history.replaceState(null, "", urlWithoutPhoto(location.href));
+  // A link to a photo that is no longer here just shows the timeline, quietly.
+  if (index >= 0) openPhoto(index);
 }
 
 function onPopState() {
@@ -303,7 +306,9 @@ function hidePhoto() {
   el.lightbox.hidden = true;
   el.lightboxImage.removeAttribute("src");
   document.body.style.overflow = "";
-  // Locking the body's scroll can lose the timeline's place; put it back.
+  // Locking the body's scroll can lose the timeline's place; put it back. The
+  // entry knows it when we arrive by going back; the field covers arriving any
+  // other way, such as forward out of a photo.
   window.scrollTo(0, history.state?.scrollY ?? state.scrollY);
 }
 
