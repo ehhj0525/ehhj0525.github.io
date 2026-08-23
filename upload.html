@@ -57,6 +57,8 @@
           <span class="drop-text">Choose photos</span>
           <span class="drop-hint">or drag them here</span>
         </label>
+        <!-- role="status" is announced as it changes, so the count is not sight-only. -->
+        <p id="progress" class="progress" role="status" hidden></p>
         <ul id="queue" class="queue"></ul>
         <p id="done-note" class="note" hidden>
           Uploaded. The site rebuilds automatically in a minute or two —

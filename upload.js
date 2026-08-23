@@ -7,6 +7,7 @@
  */
 
 import { createClient, detectRepo, encodeBase64 } from "./github.js";
+import { batchProgress, batchSummary } from "./upload-progress.js";
 
 const MAX_BYTES = 40 * 1024 * 1024; // the Contents API gets unhappy well before this
 const NAME_ATTEMPTS = 5; // how many numbered variants to try before giving up on a filename
@@ -27,6 +28,7 @@ const el = {
   repoName: document.getElementById("repo-name"),
   drop: document.getElementById("drop"),
   fileInput: document.getElementById("file-input"),
+  progress: document.getElementById("progress"),
   queue: document.getElementById("queue"),
   doneNote: document.getElementById("done-note"),
   actionsLink: document.getElementById("actions-link"),
@@ -96,7 +98,15 @@ function queueRow(file) {
 async function upload(files) {
   el.doneNote.hidden = true;
   const rows = [...files].map((file) => [file, queueRow(file)]);
+  let done = 0;
   let succeeded = 0;
+  const showCount = () => {
+    el.progress.textContent = batchProgress(done, rows.length);
+  };
+
+  // A second batch starts its own count rather than carrying on the last one.
+  el.progress.hidden = false;
+  showCount();
 
   for (const [file, row] of rows) {
     try {
@@ -109,8 +119,12 @@ async function upload(files) {
     } catch (error) {
       row.set(error.message, "failed");
     }
+    // Outside the catch: a photo that failed is one fewer left to wait for.
+    done += 1;
+    showCount();
   }
 
+  el.progress.textContent = batchSummary(succeeded, rows.length - succeeded);
   if (succeeded > 0) el.doneNote.hidden = false;
 }
 

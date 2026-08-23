@@ -110,6 +110,13 @@ button {
   font-size: 0.8rem;
 }
 
+.progress {
+  margin: 16px 0 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums; /* the count must not jitter as it climbs */
+}
+
 .queue {
   list-style: none;
   margin: 16px 0 0;
