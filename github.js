@@ -192,10 +192,17 @@ export function createClient(repo) {
     }
   }
 
-  /** A file to commit — either already-encoded `content`, or `text` to encode. */
-  const payload = ({ content, text, message }) => ({
+  /**
+   * A file to commit — either already-encoded `content`, or `text` to encode.
+   *
+   * `text` may also be a function of the file's current contents (`null` when
+   * there is no such file yet), for a write that changes what is already there
+   * rather than replacing it. {@link writeFile} calls it once per attempt.
+   */
+  const payload = ({ content, text, message }, current = null) => ({
     message,
-    content: content ?? encodeBase64(new TextEncoder().encode(text)),
+    content:
+      content ?? encodeBase64(new TextEncoder().encode(typeof text === "function" ? text(current) : text)),
   });
 
   /**
@@ -211,13 +218,20 @@ export function createClient(repo) {
    * If the branch moves in between — the pipeline commits on every push — GitHub
    * rejects the stale sha, and the write is simply made again against the state
    * that is there now.
+   *
+   * The body is built inside the loop, from the read that attempt made, and not
+   * reused from the last one. For a write that merges, reusing it would take a
+   * 409 — which is somebody else's commit landing — and answer it by committing
+   * a body prepared before that commit existed, over the top of it. There is
+   * nothing to see afterwards: the write succeeds, and the other change is
+   * simply not in the file.
    */
   async function writeFile(path, file) {
     let existing = await readFile(path);
 
     for (let attempt = 1; ; attempt += 1) {
       try {
-        return await put(path, { ...payload(file), sha: existing?.sha });
+        return await put(path, { ...payload(file, existing?.text ?? null), sha: existing?.sha });
       } catch (error) {
         // 409 is the branch moving under a sha that was good when it was read.
         // 422 only means the same thing when no sha was sent at all — the file

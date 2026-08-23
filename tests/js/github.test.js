@@ -347,6 +347,57 @@ describe("writeFile", () => {
     assert.equal(calls[3].body.sha, "theirs");
   });
 
+  it("hands a write that merges the contents it is merging into", async () => {
+    const seen = [];
+    recordFetch((call) => (call.method === "GET" ? file('{"places":[]}', "sha-1") : { body: {} }));
+
+    await createClient(REPO).writeFile("overrides.json", {
+      text: (current) => {
+        seen.push(current);
+        return "{}";
+      },
+      message: "fix a date",
+    });
+
+    assert.deepEqual(seen, ['{"places":[]}']);
+  });
+
+  it("has nothing to merge into when the file does not exist yet", async () => {
+    recordFetch((call) =>
+      call.method === "GET" ? rejected(404, "Not Found") : { status: 201, body: {} }
+    );
+    let seen = "not called";
+
+    await createClient(REPO).writeFile("overrides.json", {
+      text: (current) => {
+        seen = current;
+        return "{}";
+      },
+      message: "fix a date",
+    });
+
+    assert.equal(seen, null);
+  });
+
+  /*
+   * The one that matters: a 409 means somebody else's commit landed, so writing
+   * the body we prepared before reading would overwrite it. A merging write is
+   * asked again, against what is on the branch now.
+   */
+  it("merges again against fresh contents rather than over the write that moved the branch", async () => {
+    const calls = recordFetch((call, nth) => {
+      if (call.method === "GET") return file(nth === 1 ? "[]" : '["theirs"]', nth === 1 ? "stale" : "fresh");
+      return nth === 2 ? rejected(409, "does not match") : { body: {} };
+    });
+
+    await createClient(REPO).writeFile("overrides.json", {
+      text: (current) => JSON.stringify([...JSON.parse(current), "mine"]),
+      message: "fix a date",
+    });
+
+    assert.equal(Buffer.from(calls[3].body.content, "base64").toString("utf8"), '["theirs","mine"]');
+  });
+
   it("surfaces a rejected request instead of repeating it", async () => {
     const calls = recordFetch((call) =>
       call.method === "GET" ? file("{}", "sha-1") : rejected(422, "content is not valid Base64")

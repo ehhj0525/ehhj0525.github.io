@@ -12,7 +12,12 @@
   <body>
     <header class="site-header">
       <h1>Add photos</h1>
-      <nav class="views"><a class="link-back" href="./">← Gallery</a></nav>
+      <nav class="views">
+        <a class="link-back" href="./">← Gallery</a>
+        <!-- Hidden until this device has a token: fixing a photo is a write to
+             the repository, exactly as adding one is. -->
+        <a id="to-fix" href="?fix" hidden>Fix a photo</a>
+      </nav>
     </header>
 
     <main class="upload">
@@ -110,6 +115,59 @@
         </p>
         <button id="show-code" type="button">Set up another device</button>
         <button id="forget" class="forget" type="button">Forget token on this device</button>
+      </section>
+
+      <!-- The page's third state, at ?fix, in place of the picker rather than
+           under it: a list of photos to scroll is a second job, and the queue
+           is the one that must not be disturbed. -->
+      <section id="fix" class="card" hidden>
+        <a id="fix-back" class="link-back" href="?">← Adding photos</a>
+        <h2>Fix a photo</h2>
+        <p>
+          A photo that arrived with its metadata stripped lands on the day it was uploaded, with
+          no place. Fill in what it should say and the next build moves it — on the timeline and
+          on the map. Empty a field to go back to whatever the photo itself says.
+        </p>
+
+        <!-- Shut by default: naming a place is the rarer job, and open it would
+             put a form between someone and the photo they came here to fix. -->
+        <details id="place">
+          <summary>Name a place</summary>
+          <p>
+            Every photo taken within the radius is labelled with this name instead of whatever
+            OpenStreetMap calls it — including the ones already published.
+          </p>
+          <form id="place-form">
+            <label>
+              Name
+              <input id="place-name" type="text" placeholder="할머니집" spellcheck="false" required />
+            </label>
+            <label>
+              Latitude
+              <input id="place-lat" type="text" placeholder="37.4500" spellcheck="false" required />
+            </label>
+            <label>
+              Longitude
+              <input id="place-lon" type="text" placeholder="127.1300" spellcheck="false" required />
+            </label>
+            <label>
+              Radius in metres
+              <!-- The hint is the pipeline's own default, filled in by upload.js. -->
+              <input id="place-radius" type="text" spellcheck="false" />
+            </label>
+            <button id="place-save" type="submit">Add place</button>
+            <span id="place-state" class="state" role="status"></span>
+          </form>
+          <p id="place-named" class="note"></p>
+        </details>
+
+        <ul id="fix-list" class="fix-list"></ul>
+        <p id="fix-state" class="state" role="status"></p>
+        <p class="note">
+          These are the photos added most recently, in timeline order. One added a moment ago is
+          not here yet: it appears once the site has rebuilt, which is what reads the photo and
+          gives it a name here.
+        </p>
       </section>
 
       <!-- Never on screen unless asked for: while it is showing, a photograph

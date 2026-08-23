@@ -270,3 +270,171 @@ button {
   color: #c0392b;
   font-size: 0.85rem;
 }
+
+/* ---------- fixing a photo ---------- */
+
+/* The header holds two links now — out to the gallery, and over to the fixing
+   screen — so they are styled as what they are rather than as one back link,
+   and each gets a target big enough to tap at. */
+.views a {
+  padding: 7px 12px;
+  border-radius: 999px;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+/* Above the heading, not under the list: the list can be long, and the way out
+   of a screen should not have to be scrolled to. */
+#fix-back {
+  display: inline-block;
+  margin-bottom: 10px;
+}
+
+#place summary {
+  margin-bottom: 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.fix-list {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fix-list li {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+/* Thumbnail down the side, name over date beside it: on a phone the three will
+   not sit on one line, and the name is the half that has to wrap. */
+.fix-list summary {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas:
+    "thumb name"
+    "thumb when";
+  gap: 2px 10px;
+  align-items: center;
+  padding: 8px;
+  font-size: 0.85rem;
+  list-style: none; /* the row itself is the affordance; a triangle as well is clutter */
+  cursor: pointer;
+}
+
+.fix-list summary::-webkit-details-marker {
+  display: none;
+}
+
+.fix-list .preview {
+  grid-area: thumb;
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 6px;
+  background: var(--bg);
+}
+
+.fix-list .name {
+  grid-area: name;
+  overflow-wrap: anywhere;
+}
+
+.fix-list .when {
+  grid-area: when;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* What the screen is for: the dates that are only the day of the upload. */
+.guessed {
+  grid-area: when;
+  justify-self: end;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, #c07a24 18%, transparent);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.fix-form,
+#place-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.fix-form {
+  padding: 0 8px 10px;
+}
+
+.fix-form label,
+#place-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.fix-form input,
+#place-form input {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px; /* stops iOS zooming the page on focus */
+}
+
+.fix-form button,
+#place-form button {
+  align-self: flex-start;
+  padding: 10px 18px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.fix-form button:disabled,
+#place-form button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* A save says how it went where it was asked for, in the two colours the upload
+   queue already uses for the same two answers. */
+.fix-form .state,
+#fix-state,
+#place-state,
+#place-named {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+#fix-state,
+#place-named {
+  margin: 16px 0 0;
+}
+
+.fix-form .state.done,
+#fix-state.done,
+#place-state.done {
+  color: #3f8f5f;
+}
+
+.fix-form .state.failed,
+#fix-state.failed,
+#place-state.failed {
+  color: #c0392b;
+}

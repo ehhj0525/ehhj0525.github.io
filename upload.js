@@ -6,6 +6,18 @@
  * lives in github.js; this file is only the page around it.
  */
 
+import {
+  correctionFor,
+  dateIsGuessed,
+  DEFAULT_RADIUS_M,
+  forDateInput,
+  keyFor,
+  loadCorrections,
+  loadRecentPhotos,
+  readCorrections,
+  saveCorrection,
+  savePlace,
+} from "./corrections.js";
 import { failureHeading, loadFailures } from "./failure-report.js";
 import { createClient, detectRepo, encodeBase64 } from "./github.js";
 import { qrSvg } from "./qr.js";
@@ -52,6 +64,19 @@ const el = {
   setupCode: document.getElementById("setup-code"),
   hideCode: document.getElementById("hide-code"),
   forget: document.getElementById("forget"),
+  toFix: document.getElementById("to-fix"),
+  fix: document.getElementById("fix"),
+  fixBack: document.getElementById("fix-back"),
+  fixList: document.getElementById("fix-list"),
+  fixState: document.getElementById("fix-state"),
+  placeForm: document.getElementById("place-form"),
+  placeName: document.getElementById("place-name"),
+  placeLat: document.getElementById("place-lat"),
+  placeLon: document.getElementById("place-lon"),
+  placeRadius: document.getElementById("place-radius"),
+  placeSave: document.getElementById("place-save"),
+  placeState: document.getElementById("place-state"),
+  placeNamed: document.getElementById("place-named"),
 };
 
 let github;
@@ -185,12 +210,236 @@ async function showFailures() {
   el.failedLink.href = `https://github.com/${owner}/${name}/tree/${branch}/photos/failed`;
 }
 
+/* ------------------------------------------------------------ fix a photo */
+
+/**
+ * The corrections as they stand on the branch, held while the screen is open:
+ * a row needs to know what is already set, and a save needs to know which key
+ * it is set under. Every save hands back the file it committed, which replaces
+ * this — so what is here is what landed, not what was asked for.
+ */
+let corrections = { photos: {}, places: [] };
+
+// popstate arrives a beat after history.back(), so without this a second tap on
+// the way out would go back twice and leave the page.
+let leavingFix = false;
+
+/** A labelled field: what the correction says, over a hint of what the photo says. */
+function fixField(label, value, { hint = "", type = "text" } = {}) {
+  const field = document.createElement("label");
+  field.append(label);
+
+  const input = document.createElement("input");
+  input.type = type;
+  input.value = value ?? "";
+  input.placeholder = hint;
+  input.spellcheck = false;
+
+  field.append(input);
+  return { field, input };
+}
+
+/**
+ * One photo: shut, what the timeline shows; open, the four things a correction
+ * can say about it.
+ *
+ * A field holds a value only where there is a correction — what the photo
+ * itself recorded is the hint behind it. Filling the fields in from the photo
+ * would turn opening a row into a correction that pins those values for good,
+ * and would leave emptying a field meaning nothing.
+ */
+function fixRow(photo) {
+  const correction = correctionFor(corrections, photo);
+  const exif = photo.exif ?? {};
+
+  const preview = document.createElement("img");
+  preview.className = "preview";
+  preview.src = photo.thumb;
+  preview.alt = "";
+  preview.loading = "lazy";
+
+  const name = document.createElement("span");
+  name.className = "name";
+  name.textContent = photo.name;
+
+  // The date written the way the field below writes it, rather than the way the
+  // gallery says it: here it is there to be compared with what is about to be
+  // typed in.
+  const when = document.createElement("span");
+  when.className = "when";
+  when.textContent = forDateInput(photo.takenAt).replace("T", " ");
+
+  const summary = document.createElement("summary");
+  summary.append(preview, name, when);
+
+  if (dateIsGuessed(photo)) {
+    const guessed = document.createElement("span");
+    guessed.className = "guessed";
+    guessed.textContent = "date is a guess";
+    summary.append(guessed);
+  }
+
+  const unrecorded = "nothing in the photo";
+  // datetime-local is a picker on a phone; where a browser has none it falls
+  // back to a text field, and the same ISO text is read out of either.
+  const taken = fixField("Taken", forDateInput(correction.takenAt), { type: "datetime-local" });
+  const lat = fixField("Latitude", correction.lat, { hint: exif.lat ?? unrecorded });
+  const lon = fixField("Longitude", correction.lon, { hint: exif.lon ?? unrecorded });
+  const place = fixField("Place", correction.place, {
+    hint: photo.place ?? "looked up from the location",
+  });
+
+  const save = document.createElement("button");
+  save.type = "submit";
+  save.textContent = "Save";
+
+  const state = document.createElement("span");
+  state.className = "state";
+  state.setAttribute("role", "status");
+
+  const form = document.createElement("form");
+  form.className = "fix-form";
+  form.append(taken.field, lat.field, lon.field, place.field, save, state);
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    saveRow(photo, save, state, {
+      takenAt: taken.input.value,
+      lat: lat.input.value,
+      lon: lon.input.value,
+      place: place.input.value,
+    });
+  });
+
+  const details = document.createElement("details");
+  details.append(summary, form);
+
+  const row = document.createElement("li");
+  row.append(details);
+  return row;
+}
+
+/** Say how a save went where it was asked for, rather than at the top of the screen. */
+function report(state, text, outcome) {
+  state.className = outcome ? `state ${outcome}` : "state";
+  state.textContent = text;
+}
+
+async function saveRow(photo, button, state, fields) {
+  report(state, "Saving…");
+  button.disabled = true;
+  try {
+    const committed = await saveCorrection(github, keyFor(corrections, photo), fields);
+    corrections = readCorrections(committed);
+    report(state, "Saved. The next build moves it.", "done");
+  } catch (error) {
+    report(state, error.message, "failed");
+  } finally {
+    button.disabled = false;
+  }
+}
+
+/** The places already named, so the same one is not named twice by mistake. */
+function showNamedPlaces() {
+  const names = corrections.places.map((place) => place.name).filter(Boolean);
+  el.placeNamed.hidden = names.length === 0;
+  el.placeNamed.textContent = `Named already: ${names.join(", ")}`;
+}
+
+async function addNamedPlace() {
+  report(el.placeState, "Saving…");
+  el.placeSave.disabled = true;
+  try {
+    const committed = await savePlace(github, {
+      name: el.placeName.value,
+      lat: el.placeLat.value,
+      lon: el.placeLon.value,
+      radiusM: el.placeRadius.value,
+    });
+    corrections = readCorrections(committed);
+    showNamedPlaces();
+    el.placeForm.reset();
+    report(el.placeState, "Added. The next build relabels the photos near it.", "done");
+  } catch (error) {
+    report(el.placeState, error.message, "failed");
+  } finally {
+    el.placeSave.disabled = false;
+  }
+}
+
+/**
+ * Show the screen, reading both halves of it fresh: the manifest from the site,
+ * because that is where the thumbnails are anyway, and the corrections through
+ * GitHub, because a published copy of those can be minutes behind a save.
+ */
+async function showFix() {
+  el.setup.hidden = true;
+  el.picker.hidden = true;
+  el.handOff.hidden = true;
+  el.fix.hidden = false;
+  el.toFix.hidden = true;
+
+  el.fixList.replaceChildren();
+  el.fixState.hidden = false;
+  report(el.fixState, "Reading the photos…");
+
+  let photos;
+  try {
+    // Reading the manifest never fails loudly — an unbuilt site is an empty
+    // screen, not an error. The corrections are read through GitHub, and that
+    // can be refused.
+    const [published, current] = await Promise.all([loadRecentPhotos(), loadCorrections(github)]);
+    photos = published;
+    corrections = current;
+  } catch (error) {
+    report(el.fixState, `The corrections could not be read: ${error.message}`, "failed");
+    return;
+  }
+
+  showNamedPlaces();
+  el.fixList.replaceChildren(...photos.map(fixRow));
+  report(el.fixState, photos.length === 0 ? "No photos here yet." : "");
+  el.fixState.hidden = photos.length > 0;
+}
+
+function hideFix() {
+  el.fix.hidden = true;
+  // The rows hold thumbnails and half-typed fields for a screen that is gone.
+  el.fixList.replaceChildren();
+  el.picker.hidden = false;
+  el.toFix.hidden = false;
+}
+
+/*
+ * The screen is a place of its own: it names itself in the address bar and owns
+ * exactly one history entry, so the phone's back gesture leaves the screen
+ * rather than the page. The same shape the gallery gives an open photo, and the
+ * URL is the truth about which of the two is showing.
+ */
+function openFix() {
+  history.pushState({ fix: true }, "", "?fix");
+  showFix();
+}
+
+/**
+ * The screen asked for in the address bar — a bookmark, or a reload while it
+ * was open. The entry it arrived on becomes the picker and the screen is opened
+ * on top of it, so going back lands on the picker rather than off the site.
+ */
+function openFixFromUrl() {
+  if (!new URLSearchParams(location.search).has("fix")) return;
+
+  history.replaceState(null, "", location.pathname);
+  openFix();
+}
+
 /* ------------------------------------------------------------------ setup */
 
 function showPicker() {
   el.setup.hidden = true;
   el.picker.hidden = false;
   el.handOff.hidden = true;
+  el.fix.hidden = true;
+  el.toFix.hidden = false;
   el.actionsLink.href = `https://github.com/${github.repo.owner}/${github.repo.name}/actions`;
 
   // The token just verified, so it still works — this only says for how long.
@@ -199,12 +448,15 @@ function showPicker() {
   el.expiry.hidden = !notice;
 
   showFailures(); // never rejects, and nothing here waits on it
+  openFixFromUrl(); // whatever the address bar asked for, once there is a token for it
 }
 
 function showSetup(message) {
   el.setup.hidden = false;
   el.picker.hidden = true;
   el.handOff.hidden = true;
+  el.fix.hidden = true;
+  el.toFix.hidden = true;
   el.setupError.hidden = !message;
   el.setupError.textContent = message ?? "";
 
@@ -294,6 +546,7 @@ async function start() {
   github = createClient(await detectRepo());
   el.repoName.textContent = `${github.repo.owner}/${github.repo.name}`;
   el.tokenLink.href = "https://github.com/settings/personal-access-tokens/new";
+  el.placeRadius.placeholder = DEFAULT_RADIUS_M; // the pipeline's own default, said once
 
   const scanned = takeScannedToken();
   if (scanned) {
@@ -357,6 +610,29 @@ async function start() {
   el.forget.addEventListener("click", () => {
     github.forgetToken();
     showSetup("Token removed from this device.");
+  });
+
+  el.toFix.addEventListener("click", (event) => {
+    event.preventDefault();
+    openFix();
+  });
+
+  el.fixBack.addEventListener("click", (event) => {
+    event.preventDefault();
+    if (leavingFix) return;
+    leavingFix = true;
+    history.back(); // which lands in the popstate handler, and that closes the screen
+  });
+
+  window.addEventListener("popstate", () => {
+    leavingFix = false;
+    if (history.state?.fix) showFix();
+    else hideFix();
+  });
+
+  el.placeForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    addNamedPlace();
   });
 
   el.fileInput.addEventListener("change", () => {

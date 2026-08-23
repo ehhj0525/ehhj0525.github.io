@@ -98,8 +98,23 @@ same way.
 ## Fixing a photo
 
 Photos sent through KakaoTalk or WhatsApp arrive with their metadata stripped, so
-they land on the timeline under today's date with no location. Fix them in
-`overrides.json` — keyed by the filename you uploaded (or the photo's hash):
+they land on the timeline under today's date with no location.
+
+Tap **Fix a photo** in the upload page's header. It lists the photos added most
+recently — including an old one uploaded today, which the timeline buries — marks
+the ones whose date is only a guess, and opens each one onto a date, a pair of
+coordinates and a place name. Fill in what it should say and save — and **empty a
+field** to go back to whatever the photo itself said. Naming a place is on the same
+screen, under *Name a place*: a point, a radius and a name, and every photo taken
+within that radius is labelled that way.
+
+A photo added a moment ago is not on that list until the site has rebuilt: the
+build is what reads the photo and gives it a name.
+
+Corrections are kept in `overrides.json` — keyed by the filename you uploaded (or
+the photo's hash) — and hand-editing it works exactly as it always did. The screen
+changes only the fields it was given, so anything written by hand, including keys
+it has never heard of, is left alone:
 
 ```json
 {
@@ -147,7 +162,8 @@ python3 -m http.server               # then open http://localhost:8000
 | `src/grace_pipeline/` | The pipeline: EXIF → manifest, HEIC → web JPEG. |
 | `index.html`, `app.js` | The gallery. |
 | `photo-url.js` | The address of an open photo: `?photo=<hash>`, so links can be shared. |
-| `upload.html`, `upload.js` | The upload page. |
+| `upload.html`, `upload.js` | The upload page, and the fixing screen at `?fix`. |
+| `corrections.js` | Reading and changing `overrides.json` without hand-editing it: one photo's fields, a named place, merged into whatever the file already says. |
 | `github.js` | Talking to this repository: which repo it is, the token, reading and writing files. |
 | `sealed-token.js` | Locking the upload token under a passphrase, and opening it again. Run by the workflow and by the page, so both agree on the format. |
 | `sealed-token.json` | The locked token, published for step 6 above. Generated — don't edit. Absent until the workflow is run. |
