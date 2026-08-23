@@ -25,6 +25,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Build from the branch tip, not from the commit that triggered the
+          # run. Uploads arrive in bursts, so by the time a run starts the tip
+          # usually holds photos the triggering commit had never heard of.
+          ref: main
 
       - uses: actions/setup-python@v5
         with:
@@ -43,15 +48,33 @@ jobs:
 
       - name: Commit the results
         run: |
-          if [ -z "$(git status --porcelain)" ]; then
-            echo "Nothing changed."
-            exit 0
-          fi
           git config user.name "grace-pipeline"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          # This push uses GITHUB_TOKEN, which by design cannot trigger another
-          # workflow run — so the pipeline cannot loop. A "[skip ci]" marker is
-          # deliberately not used here: it would risk skipping the Pages build too.
-          git commit -m "pipeline: update gallery"
-          git push || (git pull --rebase && git push)
+
+          # Everything written here is derived from photos/ and overrides.json,
+          # so when main moves underneath the run the answer is to rebuild
+          # against what is there now — never to merge. photos.json is rewritten
+          # whole by every run, so rebasing one run's manifest onto another's
+          # conflicts on principle and cannot be resolved: that is what stranded
+          # seven photos on 2026-08-23.
+          for attempt in 1 2 3; do
+            if [ -z "$(git status --porcelain)" ]; then
+              echo "Nothing changed."
+              exit 0
+            fi
+            git add -A
+            # This push uses GITHUB_TOKEN, which by design cannot trigger another
+            # workflow run — so the pipeline cannot loop. A "[skip ci]" marker is
+            # deliberately not used here: it would risk skipping the Pages build too.
+            git commit -m "pipeline: update gallery"
+            if git push; then
+              exit 0
+            fi
+            echo "main moved while this run was working; rebuilding against it (attempt $attempt)."
+            git fetch origin main
+            git reset --hard origin/main
+            grace-pipeline .
+          done
+
+          echo "Could not land the results after three attempts." >&2
+          exit 1
