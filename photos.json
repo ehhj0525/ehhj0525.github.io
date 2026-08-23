@@ -19,6 +19,23 @@
       }
     },
     {
+      "hash": "44144f94ceaf94b4",
+      "name": "20260809_182709.jpg",
+      "web": "web/44144f94ceaf94b4.jpg",
+      "thumb": "thumbs/44144f94ceaf94b4.jpg",
+      "takenAt": "2026-08-09T18:27:09",
+      "dateFallback": false,
+      "lat": null,
+      "lon": null,
+      "place": null,
+      "uploadedAt": "2026-08-23T07:24:32.278770",
+      "exif": {
+        "takenAt": "2026-08-09T18:27:09",
+        "lat": null,
+        "lon": null
+      }
+    },
+    {
       "hash": "2b7ff5186d9620e9",
       "name": "_DSC8535_Kopie.jpg",
       "web": "web/2b7ff5186d9620e9.jpg",
@@ -31,6 +48,108 @@
       "uploadedAt": "2026-08-13T22:24:02.606061",
       "exif": {
         "takenAt": "2026-08-06T09:36:58",
+        "lat": null,
+        "lon": null
+      }
+    },
+    {
+      "hash": "199c06037b5087b0",
+      "name": "20260805_174604.jpg",
+      "web": "web/199c06037b5087b0.jpg",
+      "thumb": "thumbs/199c06037b5087b0.jpg",
+      "takenAt": "2026-08-05T17:46:04",
+      "dateFallback": false,
+      "lat": null,
+      "lon": null,
+      "place": null,
+      "uploadedAt": "2026-08-23T07:24:32.278770",
+      "exif": {
+        "takenAt": "2026-08-05T17:46:04",
+        "lat": null,
+        "lon": null
+      }
+    },
+    {
+      "hash": "2357ed625705f5a8",
+      "name": "20260622_115628.jpg",
+      "web": "web/2357ed625705f5a8.jpg",
+      "thumb": "thumbs/2357ed625705f5a8.jpg",
+      "takenAt": "2026-06-22T11:56:28",
+      "dateFallback": false,
+      "lat": null,
+      "lon": null,
+      "place": null,
+      "uploadedAt": "2026-08-23T07:24:32.278770",
+      "exif": {
+        "takenAt": "2026-06-22T11:56:28",
+        "lat": null,
+        "lon": null
+      }
+    },
+    {
+      "hash": "01a7b8596d7b23fe",
+      "name": "20260603_173851.jpg",
+      "web": "web/01a7b8596d7b23fe.jpg",
+      "thumb": "thumbs/01a7b8596d7b23fe.jpg",
+      "takenAt": "2026-06-03T17:38:51",
+      "dateFallback": false,
+      "lat": null,
+      "lon": null,
+      "place": null,
+      "uploadedAt": "2026-08-23T07:24:32.278770",
+      "exif": {
+        "takenAt": "2026-06-03T17:38:51",
+        "lat": null,
+        "lon": null
+      }
+    },
+    {
+      "hash": "951dee2567facad7",
+      "name": "20260516_192351.jpg",
+      "web": "web/951dee2567facad7.jpg",
+      "thumb": "thumbs/951dee2567facad7.jpg",
+      "takenAt": "2026-05-16T19:23:51",
+      "dateFallback": false,
+      "lat": null,
+      "lon": null,
+      "place": null,
+      "uploadedAt": "2026-08-23T07:24:32.278770",
+      "exif": {
+        "takenAt": "2026-05-16T19:23:51",
+        "lat": null,
+        "lon": null
+      }
+    },
+    {
+      "hash": "54c09cc587ee27a8",
+      "name": "20260502_192722.jpg",
+      "web": "web/54c09cc587ee27a8.jpg",
+      "thumb": "thumbs/54c09cc587ee27a8.jpg",
+      "takenAt": "2026-05-02T19:27:22",
+      "dateFallback": false,
+      "lat": null,
+      "lon": null,
+      "place": null,
+      "uploadedAt": "2026-08-23T07:24:32.278770",
+      "exif": {
+        "takenAt": "2026-05-02T19:27:22",
+        "lat": null,
+        "lon": null
+      }
+    },
+    {
+      "hash": "4d3b155a40acce1f",
+      "name": "20260430_150359.jpg",
+      "web": "web/4d3b155a40acce1f.jpg",
+      "thumb": "thumbs/4d3b155a40acce1f.jpg",
+      "takenAt": "2026-04-30T15:03:59",
+      "dateFallback": false,
+      "lat": null,
+      "lon": null,
+      "place": null,
+      "uploadedAt": "2026-08-23T07:24:32.278770",
+      "exif": {
+        "takenAt": "2026-04-30T15:03:59",
         "lat": null,
         "lon": null
       }
