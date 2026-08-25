@@ -2,6 +2,23 @@
   "generated": "by the Grace pipeline — edit overrides.json, not this file",
   "photos": [
     {
+      "hash": "95a9c146ddf9a616",
+      "name": "image.jpg",
+      "web": "web/95a9c146ddf9a616.jpg",
+      "thumb": "thumbs/95a9c146ddf9a616.jpg",
+      "takenAt": "2026-08-25T17:06:51.641955",
+      "dateFallback": true,
+      "lat": null,
+      "lon": null,
+      "place": null,
+      "uploadedAt": "2026-08-25T17:06:51.641955",
+      "exif": {
+        "takenAt": null,
+        "lat": null,
+        "lon": null
+      }
+    },
+    {
       "hash": "fd28366f47dd3839",
       "name": "1000080968.jpg",
       "web": "web/fd28366f47dd3839.jpg",
